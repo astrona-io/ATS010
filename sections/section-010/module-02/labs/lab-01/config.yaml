@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-002"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-002-setup"
+      description: "Creates background-ns and a pre-existing non-compliant legacy-worker Deployment"
+      type: "file"
+      source: "bootstrap/02-seed-namespace-and-legacy-deployment.sh"
+
+validation:
+  scripts:
+    - name: "verify-background-scan-and-policyexception"
+      description: "Confirms autogen, background scanning of legacy-worker, blocked new-worker, and the PolicyException all behave as required"
+      type: "file"
+      source: "validation/validate-completed.sh"

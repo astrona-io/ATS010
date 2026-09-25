@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-004"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-004-setup"
+      description: "Creates the shop-prod (env=prod) and shop-dev (env=dev) namespaces"
+      type: "file"
+      source: "bootstrap/02-seed-namespaces.sh"
+
+validation:
+  scripts:
+    - name: "verify-require-reviewed-public-ingress"
+      description: "Confirms the policy exists, blocks an unreviewed public Ingress in shop-prod, and admits everything out of its scope"
+      type: "file"
+      source: "validation/validate-completed.sh"

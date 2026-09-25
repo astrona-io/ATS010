@@ -1,0 +1,264 @@
+training:
+  id: ATS010
+  title: "KCA: Applying Policies"
+  description: >
+    Training material covering the Applying Policies domain for the
+    Kyverno Certified Associate (KCA) learning path, with hands-on labs
+    for each competency running on a kind Kubernetes cluster.
+
+  certification:
+    name: Kyverno Certified Associate
+    code: KCA
+    provider: Kyverno Project (CNCF Sandbox)
+    domain: Applying Policies
+    weight: 100
+
+modules:
+  - id: module-010
+    title: "Section 010: Applying Policy in Cluster"
+    description: >
+      Move from a written policy manifest to a policy that is actually
+      live in the cluster: applying ClusterPolicy and Policy objects with
+      kubectl, the difference between what Enforce blocks at admission
+      time and what Audit only records, background scanning already-
+      existing resources, autogen rules for Pod controllers, and
+      PolicyExceptions as a scoped, auditable override.
+
+    content:
+      - type: reading
+        title: Section Overview
+        path: sections/section-010/README.md
+
+      - type: reading
+        title: "Module 1: Getting a Policy Live: ClusterPolicy vs Policy & the Admission Path"
+        path: sections/section-010/module-01/course.md
+
+      - type: reading
+        title: "Module 1.1: Applying ClusterPolicy & Policy with kubectl"
+        path: sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+
+      - type: reading
+        title: "Module 1.2: Enforce vs Audit at Apply Time"
+        path: sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
+
+      - type: reading
+        title: Question
+        path: sections/section-010/module-01/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-010/module-01/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Enforce-Mode Resource Limits Policy Lab"
+        path: sections/section-010/module-01/labs/lab-01
+
+      - type: reading
+        title: "Module 2: Applying Beyond Admission: Background Scans, Autogen & Exceptions"
+        path: sections/section-010/module-02/course.md
+
+      - type: reading
+        title: "Module 2.1: Background Scanning Already-Existing Resources"
+        path: sections/section-010/module-02/course-01-background-scanning-already-existing-resources.md
+
+      - type: reading
+        title: "Module 2.2: Autogen for Pod Controllers & PolicyExceptions"
+        path: sections/section-010/module-02/course-02-autogen-and-policyexceptions.md
+
+      - type: reading
+        title: Question
+        path: sections/section-010/module-02/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-010/module-02/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Background Scan & PolicyException Lab"
+        path: sections/section-010/module-02/labs/lab-01
+
+      - type: reading
+        title: "Section 010 Knowledge Check: Applying Policy in Cluster"
+        path: sections/section-010/quiz.md
+
+      - type: reading
+        title: Question
+        path: sections/section-010/capstone/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-010/capstone/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Applying Policy in Cluster Capstone Lab"
+        path: sections/section-010/capstone/labs/lab-01
+
+  - id: module-020
+    title: "Section 020: Resource Selection"
+    description: >
+      Go deep on the match/exclude block that decides which resources a
+      Kyverno rule ever sees: selecting by kind, name, and wildcard;
+      scoping by namespace and namespaceSelector; filtering by object
+      labels and admission operation; and selecting by caller identity
+      with subjects, roles, and clusterRoles, combined with any/all
+      logic.
+
+    content:
+      - type: reading
+        title: Section Overview
+        path: sections/section-020/README.md
+
+      - type: reading
+        title: "Module 1: match/exclude Fundamentals: Kinds, Names & Namespaces"
+        path: sections/section-020/module-01/course.md
+
+      - type: reading
+        title: "Module 1.1: Selecting by Kind, Name & Wildcards"
+        path: sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+
+      - type: reading
+        title: "Module 1.2: Namespaces & namespaceSelector"
+        path: sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
+
+      - type: reading
+        title: Question
+        path: sections/section-020/module-01/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-020/module-01/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Namespace & Kind Scoped Policy Lab"
+        path: sections/section-020/module-01/labs/lab-01
+
+      - type: reading
+        title: "Module 2: Selecting by Identity & Operation"
+        path: sections/section-020/module-02/course.md
+
+      - type: reading
+        title: "Module 2.1: objectSelector & Operations"
+        path: sections/section-020/module-02/course-01-objectselector-and-operations.md
+
+      - type: reading
+        title: "Module 2.2: subjects, roles, clusterRoles & any/all"
+        path: sections/section-020/module-02/course-02-subjects-roles-clusterroles-and-any-all.md
+
+      - type: reading
+        title: Question
+        path: sections/section-020/module-02/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-020/module-02/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Identity-Based Resource Selection Lab"
+        path: sections/section-020/module-02/labs/lab-01
+
+      - type: reading
+        title: "Section 020 Knowledge Check: Resource Selection"
+        path: sections/section-020/quiz.md
+
+      - type: reading
+        title: Question
+        path: sections/section-020/capstone/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-020/capstone/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Resource Selection Capstone Lab"
+        path: sections/section-020/capstone/labs/lab-01
+
+  - id: module-030
+    title: "Section 030: Common Policy Settings for Kyverno Rules"
+    description: >
+      Master the policy-level and rule-level settings that decide how a
+      Kyverno policy behaves once it is live: failurePolicy and
+      webhookTimeoutSeconds for webhook resilience, schemaValidation and
+      background scanning at the policy level, and rule-level controls
+      such as applyRules, generateExisting, and
+      mutateExistingOnPolicyUpdate.
+
+    content:
+      - type: reading
+        title: Section Overview
+        path: sections/section-030/README.md
+
+      - type: reading
+        title: "Module 1: Policy-Level Settings: failurePolicy, Timeouts & Schema Validation"
+        path: sections/section-030/module-01/course.md
+
+      - type: reading
+        title: "Module 1.1: failurePolicy & webhookTimeoutSeconds"
+        path: sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+
+      - type: reading
+        title: "Module 1.2: schemaValidation & Policy-wide background"
+        path: sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
+
+      - type: reading
+        title: Question
+        path: sections/section-030/module-01/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-030/module-01/labs/lab-01/solution.md
+
+      - type: lab
+        title: "failurePolicy & Timeout Tuning Lab"
+        path: sections/section-030/module-01/labs/lab-01
+
+      - type: reading
+        title: "Module 2: Rule-Level Settings: applyRules, generateExisting & mutateExistingOnPolicyUpdate"
+        path: sections/section-030/module-02/course.md
+
+      - type: reading
+        title: "Module 2.1: applyRules: All vs One"
+        path: sections/section-030/module-02/course-01-applyrules-all-vs-one.md
+
+      - type: reading
+        title: "Module 2.2: generateExisting & mutateExistingOnPolicyUpdate"
+        path: sections/section-030/module-02/course-02-generateexisting-and-mutateexistingonpolicyupdate.md
+
+      - type: reading
+        title: Question
+        path: sections/section-030/module-02/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-030/module-02/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Rule-Level Settings Lab"
+        path: sections/section-030/module-02/labs/lab-01
+
+      - type: reading
+        title: "Section 030 Knowledge Check: Common Policy Settings"
+        path: sections/section-030/quiz.md
+
+      - type: reading
+        title: Question
+        path: sections/section-030/capstone/labs/lab-01/question.md
+
+      - type: reading
+        title: Solution Walkthrough
+        path: sections/section-030/capstone/labs/lab-01/solution.md
+
+      - type: lab
+        title: "Common Policy Settings Capstone Lab"
+        path: sections/section-030/capstone/labs/lab-01
+
+  - id: module-040
+    title: "KCA Applying Policies Certification Quiz"
+    description: >
+      A comprehensive, scenario-based final assessment covering all 6
+      modules across the 3 Applying Policies sections, simulating
+      exam-style pressure.
+
+    content:
+      - type: reading
+        title: "Final Domain Certification Quiz"
+        path: sections/final-domain-quiz.md

@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-009"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "capstone-030-setup"
+      description: "Creates the ops-prod namespace, plus the pre-existing ops-legacy namespace and its legacy-svc Deployment"
+      type: "file"
+      source: "bootstrap/02-seed-environment.sh"
+
+validation:
+  scripts:
+    - name: "verify-section-030-capstone"
+      description: "Confirms failurePolicy/webhookTimeoutSeconds enforcement, generateExisting backfill into ops-legacy, and applyRules: One tier labeling all behave as required"
+      type: "file"
+      source: "validation/validate-completed.sh"

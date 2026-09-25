@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-007"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-007-setup"
+      description: "Creates the critical-ns and lenient-ns namespaces"
+      type: "file"
+      source: "bootstrap/02-create-namespaces.sh"
+
+validation:
+  scripts:
+    - name: "verify-failurepolicy-and-timeout-settings"
+      description: "Confirms both ClusterPolicies exist with the correct failurePolicy/webhookTimeoutSeconds, enforce the app label correctly, and that the admission controller is healthy"
+      type: "file"
+      source: "validation/validate-completed.sh"

@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-008"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-008-setup"
+      description: "Creates the pre-existing team-a, team-b, and team-c namespaces before any policy exists"
+      type: "file"
+      source: "bootstrap/02-seed-team-namespaces.sh"
+
+validation:
+  scripts:
+    - name: "verify-applyrules-and-generateexisting"
+      description: "Confirms generateExisting backfilled the NetworkPolicy into pre-existing namespaces, forward generation still works, and applyRules: One picks exactly one cost-center label"
+      type: "file"
+      source: "validation/validate-completed.sh"

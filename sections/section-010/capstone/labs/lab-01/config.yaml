@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-003"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "capstone-010-setup"
+      description: "Creates checkout-live and reporting-live, plus a pre-existing non-compliant old-reporter Deployment"
+      type: "file"
+      source: "bootstrap/02-seed-namespaces.sh"
+
+validation:
+  scripts:
+    - name: "verify-section-010-capstone"
+      description: "Confirms Enforce blocks in checkout-live, Audit reports without touching reporting-live, and the PolicyException admits the migration Job"
+      type: "file"
+      source: "validation/validate-completed.sh"

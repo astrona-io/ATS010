@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-001"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-001-setup"
+      description: "Creates the platform-ns namespace for the lab"
+      type: "file"
+      source: "bootstrap/02-create-namespace.sh"
+
+validation:
+  scripts:
+    - name: "verify-require-resource-limits-rollout"
+      description: "Confirms the policy ends in Enforce, admitted the Audit-era Pod, blocked the post-Enforce violator, and admitted the compliant Pod"
+      type: "file"
+      source: "validation/validate-completed.sh"

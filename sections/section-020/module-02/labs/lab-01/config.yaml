@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-005"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "lab-005-setup"
+      description: "Creates the apps-ns namespace and the ci-deployer ServiceAccount with RBAC to create Pods"
+      type: "file"
+      source: "bootstrap/02-seed-namespace-and-serviceaccount.sh"
+
+validation:
+  scripts:
+    - name: "verify-restrict-frontend-images"
+      description: "Confirms the policy blocks a frontend Pod with a disallowed image, admits the same shape via the excluded ServiceAccount, and admits an unrelated backend Pod"
+      type: "file"
+      source: "validation/validate-completed.sh"

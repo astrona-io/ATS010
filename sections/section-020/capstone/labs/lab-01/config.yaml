@@ -1,0 +1,23 @@
+metadata:
+  name: "ats-010-lab-006"
+  docs:
+    solution: "solution.md"
+    question: "question.md"
+
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Installs Kyverno onto the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "capstone-020-setup"
+      description: "Creates the store-prod (env=prod) and store-dev (env=dev) namespaces plus the release-bot ServiceAccount"
+      type: "file"
+      source: "bootstrap/02-seed-environment.sh"
+
+validation:
+  scripts:
+    - name: "verify-section-020-capstone"
+      description: "Confirms require-approved-release combines name, namespaceSelector, objectSelector, operations, and subjects-exclude correctly"
+      type: "file"
+      source: "validation/validate-completed.sh"

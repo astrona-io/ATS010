@@ -52,6 +52,7 @@ modules:
       - type: lab
         title: "Enforce-Mode Resource Limits Policy Lab"
         path: sections/section-010/module-01/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Module 2: Applying Beyond Admission: Background Scans, Autogen & Exceptions"
@@ -76,6 +77,7 @@ modules:
       - type: lab
         title: "Background Scan & PolicyException Lab"
         path: sections/section-010/module-02/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Section 010 Knowledge Check: Applying Policy in Cluster"
@@ -92,6 +94,7 @@ modules:
       - type: lab
         title: "Applying Policy in Cluster Capstone Lab"
         path: sections/section-010/capstone/labs/lab-01
+        difficulty: advanced
 
   - id: module-020
     title: "Section 020: Resource Selection"
@@ -131,6 +134,7 @@ modules:
       - type: lab
         title: "Namespace & Kind Scoped Policy Lab"
         path: sections/section-020/module-01/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Module 2: Selecting by Identity & Operation"
@@ -155,6 +159,7 @@ modules:
       - type: lab
         title: "Identity-Based Resource Selection Lab"
         path: sections/section-020/module-02/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Section 020 Knowledge Check: Resource Selection"
@@ -171,6 +176,7 @@ modules:
       - type: lab
         title: "Resource Selection Capstone Lab"
         path: sections/section-020/capstone/labs/lab-01
+        difficulty: advanced
 
   - id: module-030
     title: "Section 030: Common Policy Settings for Kyverno Rules"
@@ -210,6 +216,7 @@ modules:
       - type: lab
         title: "failurePolicy & Timeout Tuning Lab"
         path: sections/section-030/module-01/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Module 2: Rule-Level Settings: applyRules, generateExisting & mutateExistingOnPolicyUpdate"
@@ -234,6 +241,7 @@ modules:
       - type: lab
         title: "Rule-Level Settings Lab"
         path: sections/section-030/module-02/labs/lab-01
+        difficulty: intermediate
 
       - type: reading
         title: "Section 030 Knowledge Check: Common Policy Settings"
@@ -250,6 +258,7 @@ modules:
       - type: lab
         title: "Common Policy Settings Capstone Lab"
         path: sections/section-030/capstone/labs/lab-01
+        difficulty: advanced
 
   - id: module-040
     title: "KCA Applying Policies Certification Quiz"

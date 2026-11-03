@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Where Results Come From and How They Age (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno v1.13.2 and seeds some resources
+# and policies, then stays running for free exploration. No task, no grading,
+# no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-050-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# What the learner starts with: Kyverno 1.13.2 with the Audit policy require-owner-label on fleet-reports (five ConfigMaps, two violate) and an empty-of-policies namespace rollout-lab with four ConfigMaps (three violate) for the rollout-gate exercise. Nothing is Enforce.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its controllers and webhooks, then seed the sandbox"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

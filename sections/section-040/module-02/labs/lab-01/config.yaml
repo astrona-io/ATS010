@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Apply Generate And Cleanup Policies (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-011
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno 1.13.2 is installed. `fleet-system` holds the clone
+# source (ConfigMap fleet-banner); `scratch` holds old-report (expired=true) and
+# keep-report (expired=false). No policy and no extra Kyverno RBAC.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-fleet
+      description: Create fleet-system and scratch with their ConfigMaps
+      type: file
+      source: bootstrap/02-seed-fleet.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference ClusterRoles and policies
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-controllers
+      description: Wait until the RBAC is aggregated and the generate policy is ready
+      type: file
+      source: testing/wait-for-controllers.sh
+
+validation:
+  scripts:
+    - name: policies-ready
+      description: namespace-defaults is Ready and the cleanup policy exists
+      type: file
+      source: validation/validate-policies-ready.sh
+      hint: Create the ClusterPolicy namespace-defaults and the ClusterCleanupPolicy remove-expired-configmaps, then run kubectl get clusterpolicy until READY is True.
+    - name: controller-rbac
+      description: The background controller can create the generated kinds and the cleanup controller can delete ConfigMaps
+      type: file
+      source: validation/validate-controller-rbac.sh
+      hint: Add ClusterRoles labelled rbac.kyverno.io/aggregate-to-background-controller and rbac.kyverno.io/aggregate-to-cleanup-controller set to "true". Check with kubectl auth can-i --as=system:serviceaccount:kyverno:<controller>.
+    - name: generate-on-create
+      description: A new labelled namespace gets a ResourceQuota, a NetworkPolicy and a cloned ConfigMap
+      type: file
+      source: validation/validate-generate-on-create.sh
+      hint: Use three generate rules that match Namespace with selector fleet-managed=true. Use data for the quota (pods 10) and the NetworkPolicy (podSelector {} and policyTypes Ingress) and clone for fleet-banner from fleet-system.
+    - name: synchronize-behaviour
+      description: synchronize is true for the quota and NetworkPolicy and false for the clone, and the cluster behaves that way
+      type: file
+      source: validation/validate-synchronize-behaviour.sh
+      hint: Set generate.synchronize to true on the quota and NetworkPolicy rules and to false on the clone rule.
+    - name: cleanup-expired
+      description: The cleanup policy deletes ConfigMaps labelled expired=true in scratch and keeps the others
+      type: file
+      source: validation/validate-cleanup-expired.sh
+      hint: Use match on ConfigMap in namespace scratch, a condition on target.metadata.labels.expired equal to "true" with a default for a missing label, and schedule "* * * * *".
+
+teardown:
+  keepCluster: false

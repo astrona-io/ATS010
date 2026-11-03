@@ -1,0 +1,106 @@
+# Reference solution for the mutate and validate lab. Applied only by `astrona test`.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pod-defaults
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+spec:
+  rules:
+    - name: default-team-and-privilege
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - starfleet
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(team): platform
+          spec:
+            containers:
+              - (name): "*"
+                securityContext:
+                  +(allowPrivilegeEscalation): false
+    - name: disable-token-automount
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - starfleet
+      mutate:
+        patchesJson6902: |-
+          - op: add
+            path: /spec/automountServiceAccountToken
+            value: false
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-standards
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-team-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - starfleet
+      validate:
+        message: "Every pod needs a non-empty team label."
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+    - name: no-latest-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - starfleet
+      validate:
+        message: "Images must not use the latest tag."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: protect-registry
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: block-delete-protected
+      match:
+        any:
+          - resources:
+              kinds:
+                - ConfigMap
+              namespaces:
+                - starfleet
+              operations:
+                - DELETE
+      validate:
+        message: "ConfigMaps labelled protected=true cannot be deleted."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.oldObject.metadata.labels.protected || '' }}"
+                operator: Equals
+                value: "true"

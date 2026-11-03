@@ -1,9 +1,29 @@
-# Rule-Level Settings Sandbox
+---
+estimated_duration: 25m
+---
 
-Welcome to the Module 2 targeted practice sandbox. In this lab, you will use `generateExisting` to retroactively backfill pre-existing namespaces, and `applyRules: "One"` to build a priority-ordered pair of mutate rules that produce exactly one outcome per namespace.
+# Lab: generateExisting & applyRules
 
-## Launching the Lab
-Run the following command in your terminal to boot the kind Kubernetes cluster:
-```bash
+> UNTESTED - built from static checks only; not yet booted.
+
+Graded lab for Module 2. Backfill a default-deny `NetworkPolicy` into namespaces that existed before the policy, then use `applyRules: "One"` to give every namespace exactly one cost-center label. The task is in `question.md`; the walkthrough is in `solution.md`.
+
+## Run it
+
+```sh
 astrona run --git git@github.com:astrona-io/ATS010.git -c sections/section-030/module-02/labs/lab-01
+astrona submit --git git@github.com:astrona-io/ATS010.git -c sections/section-030/module-02/labs/lab-01
+astrona destroy ats-010-lab-008
 ```
+
+Authors run the local copy with `astrona run -c <lab>` and prove the reference solution with `astrona test -c <lab>`.
+
+## Checks
+
+| Script | What it proves |
+| --- | --- |
+| `validate-generateexisting-backfill.sh` | `generateExisting` is set; `default-deny-ingress` exists in `team-a/b/c` as a real default-deny, and not in system namespaces |
+| `validate-forward-generation.sh` | `team-d`, created later, also got the NetworkPolicy |
+| `validate-applyrules-one-policy.sh` | `label-namespace-by-tier` has `applyRules: One` and the rules in the required order |
+| `validate-gold-tier-premium.sh` | `team-a` is `tier=gold` with `cost-center=premium` |
+| `validate-standard-tier-default.sh` | `team-e` has no tier and `cost-center=standard` |

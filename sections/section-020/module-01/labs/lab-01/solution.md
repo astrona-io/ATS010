@@ -1,6 +1,6 @@
 # Solution Walkthrough
 
-Follow these steps to author, apply, and prove out the policy:
+Follow these steps to author, apply, and prove out the policy. Each step ends with an `astrona submit` loop so you can check progress as you go.
 
 ---
 
@@ -39,6 +39,8 @@ spec:
 ---
 
 ## Step 2: Apply the Policy
+Checkpoint: `astrona submit` now. `policy-defined` should pass.
+
 ```sh
 kubectl apply -f require-reviewed-public-ingress.yaml
 kubectl get clusterpolicy require-reviewed-public-ingress
@@ -47,6 +49,8 @@ kubectl get clusterpolicy require-reviewed-public-ingress
 ---
 
 ## Step 3: Confirm the Block in shop-prod
+Checkpoint: after this step `public-blocked-in-prod` passes on `astrona submit`.
+
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
@@ -99,6 +103,8 @@ EOF
 ---
 
 ## Step 5: Confirm public-shop in shop-dev Is Admitted (Namespace Out of Scope)
+Checkpoint: with steps 4 and 5 done, `out-of-scope-admitted` passes on `astrona submit`.
+
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
@@ -125,6 +131,8 @@ EOF
 ---
 
 ## Step 6: Confirm a Reviewed Public Ingress Is Admitted
+Checkpoint: after this step `reviewed-and-objects` passes on `astrona submit`.
+
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
@@ -157,4 +165,22 @@ This satisfies the pattern and is admitted normally.
 kubectl get ingress -n shop-prod
 kubectl get ingress -n shop-dev
 ```
-Confirm `public-shop` is absent from `shop-prod`, while `internal-shop` and `public-reviewed` are present there, and `public-shop` is present in `shop-dev`. Once verified, run the local validation suite to pass the lab!
+Confirm `public-shop` is absent from `shop-prod`, while `internal-shop` and `public-reviewed` are present there, and `public-shop` is present in `shop-dev`.
+
+---
+
+## Step 8: Prove the Scope Is Dynamic
+Checkpoint: `namespace-selector-is-dynamic` creates its own probe namespace, so it can pass before or after this step. Try this step anyway to see the behaviour.
+
+```sh
+kubectl create namespace shop-stage
+kubectl label namespace shop-stage env=prod
+```
+Now a `public-*` Ingress without the annotation is rejected in `shop-stage` too, although the policy never mentions it. That is the difference between `namespaceSelector` and a static `namespaces` list. Run `astrona submit` to check everything.
+
+---
+
+## Why it works
+- `kinds`, `names` and `namespaceSelector` sit in the same `resources` block, so they are ANDed.
+- The validate `pattern` value `"?*"` means "at least one character", so the annotation must exist and be non-empty.
+- If the first rejection does not appear, Kyverno is still loading the policy. Wait a few seconds and retry.

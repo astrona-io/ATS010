@@ -1,23 +1,74 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Applying Policy in Cluster Integration Capstone (LAB). Graded against the
+# live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
-  name: "ats-010-lab-003"
+  name: ats-010-lab-003
   docs:
-    solution: "solution.md"
-    question: "question.md"
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+      - busybox:1.36
+
+# Starting state: Kyverno v1.13.2 with its webhooks ready, the namespaces
+# `checkout-live` and `reporting-live`, and the Deployment `old-reporter`
+# (no resource limits) in `reporting-live`. No policy exists and PolicyException
+# support is not enabled.
 bootstrap:
   init:
-    - name: "install-kyverno"
-      description: "Installs Kyverno onto the kind cluster"
-      type: "file"
-      source: "bootstrap/01-install-kyverno.sh"
-    - name: "capstone-010-setup"
-      description: "Creates checkout-live and reporting-live, plus a pre-existing non-compliant old-reporter Deployment"
-      type: "file"
-      source: "bootstrap/02-seed-namespaces.sh"
+    - name: install-kyverno
+      description: "Install Kyverno v1.13.2 and wait for its controllers and webhooks"
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: capstone-010-setup
+      description: "Create checkout-live and reporting-live, plus a pre-existing non-compliant old-reporter Deployment"
+      type: file
+      source: bootstrap/02-seed-namespaces.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
 
 validation:
   scripts:
-    - name: "verify-section-010-capstone"
-      description: "Confirms Enforce blocks in checkout-live, Audit reports without touching reporting-live, and the PolicyException admits the migration Job"
-      type: "file"
-      source: "validation/validate-completed.sh"
+    - name: checkout-enforces-limits
+      description: checkout-require-limits is Ready, uses Enforce and rejects a Pod without limits in checkout-live
+      type: file
+      source: validation/validate-checkout-enforces-limits.sh
+      hint: Match kind Pod in checkout-live only, use validationFailureAction Enforce, and make sure no-limits-checkout was never created.
+    - name: reporting-audits-limits
+      description: reporting-audit-limits is Ready, uses Audit and admits a Pod without limits in reporting-live
+      type: file
+      source: validation/validate-reporting-audits-limits.sh
+      hint: Use a second ClusterPolicy scoped to reporting-live with validationFailureAction Audit. no-limits-reporting must exist at the end.
+    - name: old-reporter-untouched-and-reported
+      description: old-reporter is ready, still has no limits, and a PolicyReport exists in reporting-live
+      type: file
+      source: validation/validate-old-reporter-untouched-and-reported.sh
+      hint: The background scan only reports. Do not edit old-reporter. Check kubectl get policyreport -n reporting-live a few seconds after applying the policy.
+    - name: policyexceptions-enabled
+      description: The admission controller runs with --enablePolicyException=true and --exceptionNamespace=checkout-live
+      type: file
+      source: validation/validate-policyexceptions-enabled.sh
+      hint: Patch the kyverno-admission-controller Deployment in the kyverno namespace with both args and wait for the rollout.
+    - name: migration-job-excepted
+      description: allow-migration-job exempts migration-job* from checkout-require-limits, including the autogen rule, and migration-job exists with a Pod
+      type: file
+      source: validation/validate-migration-job-excepted.sh
+      hint: Create allow-migration-job in checkout-live, list the Pod rule and its autogen rule in ruleNames, match kinds Pod and Job with names migration-job*, then create the Job with no limits.
+
+teardown:
+  keepCluster: false

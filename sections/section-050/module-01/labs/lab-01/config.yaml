@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Read PolicyReports and ClusterPolicyReports (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-013
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2, five ConfigMaps in fleet-reports (two violate require-owner-label), two Namespaces (one violates require-namespace-team), both policies in Audit.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-cluster
+      description: Seed the resources and Audit policies, then wait for the first reports
+      type: file
+      source: bootstrap/02-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: testing/apply-solution.sh
+
+validation:
+  scripts:
+    - name: reports-present
+      description: "The seeded reports exist for both report kinds"
+      type: file
+      source: validation/validate-reports-present.sh
+      hint: "Wait a minute or two. kubectl get polr -A and kubectl get cpolr should list reports; if not, check kubectl get clusterpolicy for Ready."
+    - name: resources-untouched
+      description: "Seeded resources and Audit policies are unchanged"
+      type: file
+      source: validation/validate-resources-untouched.sh
+      hint: "This lab is read-only for the workloads. Do not label, delete or enforce anything."
+    - name: findings-failing-configmaps
+      description: "failing-configmaps lists the failing ConfigMaps"
+      type: file
+      source: validation/validate-findings-failing-configmaps.sh
+      hint: "Use kubectl get policyreport -n fleet-reports -o json | jq to select results with result==fail, and write the names sorted and comma-separated."
+    - name: findings-counts
+      description: "pass-count and fail-count match the reports"
+      type: file
+      source: validation/validate-findings-counts.sh
+      hint: "Count results of the policy require-owner-label in the PolicyReports of fleet-reports, not resources and not the summary of one report."
+    - name: findings-failing-namespaces
+      description: "failing-namespaces lists the failing Namespaces"
+      type: file
+      source: validation/validate-findings-failing-namespaces.sh
+      hint: "Namespaces are cluster-scoped, so read clusterpolicyreport, not policyreport."
+
+teardown:
+  keepCluster: false

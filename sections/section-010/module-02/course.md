@@ -1,32 +1,42 @@
 # Applying Beyond Admission: Background Scans, Autogen & Exceptions
 
-Admission control only ever looks at a resource the moment it is created or updated. It has nothing to say about the Deployment that has been sitting in your cluster for eight months, or about a plain `Pod`-scoped rule's blind spot for the Deployment that owns it. This module covers the three mechanisms Kyverno gives you to close those gaps: background scanning of resources that already exist, autogen rules that extend a Pod-scoped rule up to its owning controllers, and PolicyExceptions for a scoped, auditable override when a rule is correct in general but wrong for one specific resource.
+Admission control only looks at a resource at the moment someone creates or updates it. It says nothing about the Deployment that has been running for eight months, and a rule written for `Pod` has a blind spot for the Deployment that owns the Pods. This module covers the three mechanisms Kyverno provides for those gaps: background scanning of resources that already exist, autogen rules that extend a Pod rule to the controllers that create Pods, and PolicyExceptions for a scoped, visible override when a rule is right in general but wrong for one resource.
+
+A `PolicyReport` is the object where Kyverno records the results of those checks. A controller in Kubernetes, such as a Deployment, is an object that creates and manages Pods for you.
 
 ```mermaid
-flowchart TD
-    A["ClusterPolicy applied"] --> B{"background: true?"}
-    B -->|yes| C["periodic re-scan of<br/>already-existing resources"]
-    C --> D["PolicyReport /<br/>ClusterPolicyReport"]
-    A --> E{"match.kinds includes Pod?"}
-    E -->|yes, autogen not disabled| F["autogen-* rules added<br/>for Deployment, StatefulSet,<br/>DaemonSet, Job, CronJob..."]
-    A --> G["PolicyException"]
-    G --> H["exempts one named resource<br/>from one specific rule<br/>(requires --enablePolicyException)"]
+flowchart TB
+    A["ClusterPolicy applied"] -->|"background: true"| B["Periodic scan of existing resources"]
+    B --> C["PolicyReport"]
+    A -->|"rule matches Pod"| D["Autogen rules added"]
+    D --> E["Deployment, StatefulSet, DaemonSet, Job, CronJob"]
+    A --> F["PolicyException"]
+    F -->|"exempts one rule"| G["Matching resources pass"]
 ```
+
+The diagram shows three separate branches from one policy. Background scanning reports on old resources, autogen widens the admission check, and a PolicyException narrows it again for chosen resources.
 
 ## How this module is organised
 
-1. **[Part 1 — Background Scanning Already-Existing Resources](./course-01-background-scanning-already-existing-resources.md)** — what `background: true` actually re-evaluates, and what it never touches.
-2. **[Part 2 — Autogen for Pod Controllers & PolicyExceptions](./course-02-autogen-and-policyexceptions.md)** — how a Pod-scoped rule reaches Deployments automatically, and how to carve out a scoped exception without editing the policy.
+1. **Background Scanning Already-Existing Resources** covers what `background: true` re-checks, how a result changes after a fix, and which rules cannot be scanned.
+2. **Autogen for Pod Controllers** covers how a Pod rule becomes rules for Deployments and other controllers, how to read them, and how to restrict or disable them with `pod-policies.kyverno.io/autogen-controllers`.
+3. **PolicyExceptions in Depth** covers how to enable PolicyExceptions, every field of the object, and how to write exceptions that stay narrow.
+4. **Summary** closes the module.
 
 ## Learning objectives
 
 After this module you can:
 
-- Explain what `background: true` does, that it only meaningfully applies to `validate` rules, and where its findings are recorded.
-- Turn background scanning off for a rule with `background: false` and explain when you'd want to.
-- Explain Kyverno's autogen mechanism: why a `Pod`-scoped rule also protects Deployments/StatefulSets/etc. at admission time, and how to read or disable it via the `pod-policies.kyverno.io/autogen-controllers` annotation.
-- Enable `PolicyException` support on a cluster and write one that exempts a specific resource from a specific rule.
+- Explain what `background: true` does, that it only applies to `validate` rules, and where the findings are recorded.
+- Turn background scanning off for a rule with `background: false` and say when to do it.
+- Explain autogen, read the generated rules, and restrict or disable them with the `pod-policies.kyverno.io/autogen-controllers` annotation.
+- Enable PolicyException support and write an exception that exempts specific resources from specific rules, including the autogen rule names.
+- Check that an exception is active and review all exceptions in a cluster.
 
 ## Before you start
 
-This module assumes you've completed Module 1, or are already comfortable applying a `ClusterPolicy` and reading `validationFailureAction`. The linked lab gives you a kind Kubernetes cluster with Kyverno pre-installed and a pre-existing non-compliant Deployment already running, to simulate a real "we're turning on policy against a cluster that already has workloads" scenario.
+You should know how to apply a `ClusterPolicy` and read `validationFailureAction`. The playground gives you a kind Kubernetes cluster with Kyverno 1.13.2 installed and a Deployment `legacy-worker` already running without resource limits in the namespace `background-ns`. That is the situation you meet when you turn on policy in a cluster that already has workloads.
+
+Launch the playground now and keep it open while you read.
+
+<!-- astrona:playground -->

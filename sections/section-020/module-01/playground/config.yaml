@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# match/exclude Fundamentals (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno v1.13.2 and seeds three
+# namespaces, then stays running for free exploration. No task, no grading,
+# no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-020-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# What the learner starts with: Kyverno v1.13.2 with its four controllers
+# ready, namespaces shop-prod (env=prod), shop-dev (env=dev) and shop-stage
+# (env=staging), and a few ConfigMaps with deliberately misleading names.
+# No ClusterPolicy and no Policy.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its controllers, then seed namespaces and ConfigMaps"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

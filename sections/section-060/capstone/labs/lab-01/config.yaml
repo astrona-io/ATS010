@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Capstone: Ship A Policy Through apply, test And CI (LAB). Graded by running
+# the kyverno CLI on the learner's files in $HOME/kyverno-lab/capstone and by
+# checking the cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: "ats-010-lab-018"
+  docs:
+    prerequisites: "prerequisites.md"
+    question: "question.md"
+    solution: "solution.md"
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2 in the cluster, the Kyverno CLI v1.13.2 on
+# PATH, two Pod manifests in $HOME/kyverno-lab/capstone/resources, and a Pod
+# named legacy-external in the namespace lab.
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Install Kyverno v1.13.2 into the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "install-kyverno-cli"
+      description: "Download and install the Kyverno CLI v1.13.2"
+      type: "file"
+      source: "bootstrap/02-install-kyverno-cli.sh"
+    - name: "seed-working-directory"
+      description: "Create $HOME/kyverno-lab/capstone with Pod manifests and the namespace lab"
+      type: "file"
+      source: "bootstrap/03-seed-working-directory.sh"
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: "apply-solution"
+      description: "Write policy, test, CI script and apply the policy"
+      type: "file"
+      source: "solution/apply.sh"
+
+validation:
+  scripts:
+    - name: "policy-and-exit-codes"
+      description: "restrict-registry is an Enforce policy; the CLI passes api and fails web"
+      type: "file"
+      source: "validation/validate-policy-and-exit-codes.sh"
+      hint: "Write policies/restrict-registry.yaml: ClusterPolicy restrict-registry, rule check-registry, validationFailureAction Enforce, match Pod in namespace lab, pattern spec.containers[].image \"ghcr.io/acme/*\"."
+    - name: "test-file"
+      description: "tests/kyverno-test.yaml has a pass and a fail result and kyverno test succeeds"
+      type: "file"
+      source: "validation/validate-test-file.sh"
+      hint: "Paths in the test file are relative to tests/, so the policy is ../policies/restrict-registry.yaml. The resources are in namespace lab, so add namespace: lab to each result."
+    - name: "regression-caught"
+      description: "kyverno test fails when the policy changes"
+      type: "file"
+      source: "validation/validate-regression-caught.sh"
+      hint: "Expect pass for api and fail for web. A test that expects the wrong result catches nothing."
+    - name: "audit-warn"
+      description: "In Audit mode the CLI fails web by default and exits 0 with --audit-warn"
+      type: "file"
+      source: "validation/validate-audit-warn.sh"
+      hint: "The check switches your policy to Audit in a copy. Keep the line validationFailureAction: Enforce in your policy file."
+    - name: "ci-script"
+      description: "ci/run.sh runs kyverno test and works from any directory"
+      type: "file"
+      source: "validation/validate-ci-script.sh"
+      hint: "Use set -euo pipefail, cd \"$(dirname \"$0\")/..\" and kyverno test tests, then chmod +x."
+    - name: "cluster-scan"
+      description: "kyverno apply --cluster reports the existing Pod legacy-external"
+      type: "file"
+      source: "validation/validate-cluster-scan.sh"
+      hint: "Run kyverno apply policies/restrict-registry.yaml --cluster. The Pod uses registry.k8s.io, not ghcr.io/acme."
+    - name: "policy-live"
+      description: "The proven policy is live and rejects the docker.io image"
+      type: "file"
+      source: "validation/validate-policy-live.sh"
+      hint: "kubectl apply -f policies/restrict-registry.yaml, wait for Ready, then use kubectl apply --dry-run=server on the two Pod files."
+
+teardown:
+  keepCluster: false

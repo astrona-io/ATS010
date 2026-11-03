@@ -1,0 +1,253 @@
+# Knowledge check for section 060. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-060
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-060
+  title: "Kyverno CLI: apply & test"
+questions:
+  - id: ats010-060-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Read the summary counters of kyverno apply and explain why a resource is skipped"
+    source_readings:
+      - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+    prompt: |-
+      A policy rule matches Pods in the namespace `lab`. You run `kyverno apply` on a Pod manifest that has no `metadata.namespace`. The command exits 0 and the summary shows `skip: 1`. What does this tell you?
+    options:
+      - id: a
+        text: "The Pod is compliant, because skip is another word for pass."
+        explanation: "Skip is not pass. It counts resources that the rule did not evaluate."
+      - id: b
+        text: "The CLI cannot read the file, so it skipped it and the policy is invalid."
+        explanation: "An unreadable file produces an error, not a skip."
+      - id: c
+        text: "The match block did not select the Pod, so the rule never ran. The run proves nothing about the Pod."
+        explanation: "Correct. The CLI evaluates the match block first. A Pod without the namespace `lab` is not selected, so the rule is skipped. Put the namespace in the manifest."
+      - id: d
+        text: "The policy is in Audit mode, so every result is skipped."
+        explanation: "The action field does not turn results into skips."
+    correct_option: c
+    explanation: "The CLI evaluates match and exclude before it runs a rule. A resource that no match selects is counted as skipped, and the exit code stays 0, so check the counters and give the manifest the namespace."
+
+  - id: ats010-060-q02
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Use --audit-warn so that Audit policies report without failing a CI job"
+    source_readings:
+      - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+    prompt: |-
+      A CI job runs `kyverno apply` for a policy that is still in `Audit` mode. The team wants to see the violations in the job log, but the job must not fail because of them. `Enforce` policies must still fail the job. What do you add to the command?
+    options:
+      - id: a
+        text: "The flag `--audit-warn`."
+        explanation: "Correct. With `--audit-warn` the CLI counts Audit failures as warnings. The exit code stays 0, and Enforce failures still fail the job."
+      - id: b
+        text: "Change the policy to `validationFailureAction: Enforce`."
+        explanation: "Enforce failures always make the exit code non-zero, so this makes the job fail more, not less."
+      - id: c
+        text: "The flag `--cluster`."
+        explanation: "`--cluster` reads resources from a cluster. It does not change how failures count."
+      - id: d
+        text: "The flag `-o` with a file path."
+        explanation: "`-o` saves mutated resources. It has no effect on the exit code of a validate failure."
+    correct_option: a
+    explanation: "`--audit-warn` turns failures of Audit policies into warnings. Failures of Enforce policies still produce a non-zero exit code."
+
+  - id: ats010-060-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict the exit code of kyverno apply for Enforce and Audit policies"
+    source_readings:
+      - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+    prompt: |-
+      A colleague says: "An Audit policy never blocks anything, so `kyverno apply` can never fail because of it." You run `kyverno apply` with an Audit policy and a violating Pod and no extra flags. What happens, and why?
+    options:
+      - id: a
+        text: "The exit code is 0, because Audit policies are only written to a report."
+        explanation: "That is the live cluster behaviour. The CLI blocks nothing, so it uses the exit code to report failures."
+      - id: b
+        text: "The CLI ignores Audit policies and prints `skip` for every rule."
+        explanation: "The CLI runs Audit rules like any other rule."
+      - id: c
+        text: "The exit code is 0, but only when the Pod is in the namespace `default`."
+        explanation: "The namespace does not change how failures are counted."
+      - id: d
+        text: "The exit code is non-zero. In the CLI an Audit failure is a failure too, unless `--audit-warn` is set."
+        explanation: "Correct. The CLI does not block, so it reports every failed rule through the exit code. `--audit-warn` counts Audit failures as warnings instead."
+    correct_option: d
+    explanation: "In a file-based run nothing is blocked. The exit code reports failures, and Audit failures count as failures until you set `--audit-warn`."
+
+  - id: ats010-060-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Supply variable values with -s/--set or a Values file"
+    source_readings:
+      - sections/section-060/module-01/course-02-variables-and-mutate-output.md
+    prompt: |-
+      A policy uses `{{ allowedEnv }}` in a pattern. `kyverno apply` on a Pod manifest reports an error for the rule and exits non-zero. A live admission request would not have this problem for `request.object`. What is the fix for the CLI run?
+    options:
+      - id: a
+        text: "Add `--audit-warn` so that the error becomes a warning."
+        explanation: "`--audit-warn` only changes how Audit failures count. An error stays an error."
+      - id: b
+        text: "Give `allowedEnv` a value with `--set`, or with a `Values` file passed with `--values-file` that names the policy and the rule."
+        explanation: "Correct. The CLI has no admission request, so it needs a value for every variable that is not `request.object`. A Values file lists values per policy rule and per resource."
+      - id: c
+        text: "Add `allowedEnv` as a label to the Pod manifest."
+        explanation: "A label would not define the variable. The policy reads a variable called allowedEnv."
+      - id: d
+        text: "Run the command with `--policy-report`."
+        explanation: "`--policy-report` changes the output format. It does not supply variables."
+    correct_option: b
+    explanation: "Variables other than the resource come from `-s`/`--set` or from a `Values` file (`cli.kyverno.io/v1alpha1`) passed with `--values-file`. Policy and rule names in the file must match exactly."
+
+  - id: ats010-060-q05
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Save the output of a mutate policy with -o"
+    source_readings:
+      - sections/section-060/module-01/course-02-variables-and-mutate-output.md
+    prompt: |-
+      You want the exact Pod that a mutate policy produces from `pod-good.yaml`, saved as a file, without changing the input file. Which command does this?
+    options:
+      - id: a
+        text: "`kyverno apply policy.yaml --resource pod-good.yaml -o out/patched.yaml`"
+        explanation: "Correct. `-o` writes the mutated resource to the path. The input file stays unchanged."
+      - id: b
+        text: "`kyverno apply policy.yaml --resource pod-good.yaml --policy-report`"
+        explanation: "`--policy-report` prints a report of results. It does not save the mutated resource."
+      - id: c
+        text: "`kyverno apply policy.yaml --cluster`"
+        explanation: "`--cluster` reads live resources and does not save a patched file."
+      - id: d
+        text: "`kyverno apply policy.yaml --resource pod-good.yaml --audit-warn`"
+        explanation: "`--audit-warn` changes the exit code for Audit failures only."
+    correct_option: a
+    explanation: "The `-o` flag (`--output`) saves mutated resources. The CLI never edits the source file."
+
+  - id: ats010-060-q06
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Name a reason why a CLI result differs from the live cluster"
+    source_readings:
+      - sections/section-060/module-01/course-03-cluster-mode-reports-and-differences.md
+    prompt: |-
+      A validate rule passes in `kyverno apply` on a manifest, but the live cluster rejects the same workload. The policy is the same. Which of these is a valid cause?
+    options:
+      - id: a
+        text: "The CLI ignores the `pattern` of a validate rule and checks only the `match` block."
+        explanation: "The CLI evaluates patterns as the engine does. This is not a difference."
+      - id: b
+        text: "The live webhook only evaluates Audit policies."
+        explanation: "The live webhook evaluates Enforce policies and blocks. It does not only evaluate Audit policies."
+      - id: c
+        text: "Kyverno in a cluster always uses a different policy file than the CLI."
+        explanation: "The policy is the same object in the scenario. A different policy is not a cause."
+      - id: d
+        text: "The live request contains fields that the file does not, such as defaults added by the API server or injected containers, and the rule evaluates them."
+        explanation: "Correct. The file is not the admitted object. Defaults, injected sidecars, `request.userInfo`, namespace labels, exceptions and the Kyverno version can all change the live result."
+    correct_option: d
+    explanation: "A manifest differs from the live admission request. Add the missing information with values, use `--cluster`, and finish with a server-side dry run."
+
+  - id: ats010-060-q07
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Write a result entry that matches a real rule result"
+    source_readings:
+      - sections/section-060/module-02/course-01-the-kyverno-test-yaml-format.md
+    prompt: |-
+      In a `kyverno-test.yaml` you write `rule: check-limit`, but the policy rule is named `check-limits`. All other fields are correct. What does `kyverno test` do?
+    options:
+      - id: a
+        text: "It matches the closest rule name and the test passes."
+        explanation: "The CLI does not do fuzzy matching of rule names."
+      - id: b
+        text: "It ignores the result and exits 0."
+        explanation: "A missing result is not ignored. It counts as a failed expectation."
+      - id: c
+        text: "It cannot find a real result for the expectation, so the test fails and the exit code is non-zero."
+        explanation: "Correct. Policy and rule names are exact. An expectation without a matching real result fails the test."
+      - id: d
+        text: "It renames the rule in the policy file."
+        explanation: "The test runner never edits policy files."
+    correct_option: c
+    explanation: "Each expectation is looked up by policy, rule, resource name and kind. If no real result matches, the test fails."
+
+  - id: ats010-060-q08
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Design a test suite with pass and fail samples"
+    source_readings:
+      - sections/section-060/module-02/course-01-the-kyverno-test-yaml-format.md
+    prompt: |-
+      A test suite for a validate rule has two sample Pods, both compliant, and two `result: pass` expectations. `kyverno test` exits 0. What is the weakness of this suite?
+    options:
+      - id: a
+        text: "The suite is wrong, because every expectation must be `skip`."
+        explanation: "Skip means the rule did not apply. It is not required."
+      - id: b
+        text: "It also passes for a policy that never fails anything, so it cannot catch a rule that is too loose or broken."
+        explanation: "Correct. Add a violating sample with `result: fail` for every validate rule. Then the suite also detects a rule that stops failing."
+      - id: c
+        text: "A `pass` expectation is not allowed without a `patchedResources` file."
+        explanation: "`patchedResources` is for mutate rules, not for validate rules."
+      - id: d
+        text: "The suite only works when the policy is in Enforce mode."
+        explanation: "The test result does not depend on the action of the policy."
+    correct_option: b
+    explanation: "A suite of only pass expectations does not detect a broken or too loose policy. Include a bad sample that must fail."
+
+  - id: ats010-060-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Run kyverno test in CI so that a wrong result fails the build"
+    source_readings:
+      - sections/section-060/module-02/course-02-test-layout-in-git-and-ci.md
+    prompt: |-
+      You add a CI job for the policies repository. Which script makes the job fail when any test expectation differs, and works whatever the current directory of the runner is?
+    options:
+      - id: a
+        text: "A script with `set -euo pipefail`, then a `cd` to the repository root taken from the script path, and `kyverno test tests` as the last command."
+        explanation: "Correct. The script stops on errors, finds the repository root from its own path, and the exit code of `kyverno test` is the exit code of the job."
+      - id: b
+        text: "A script that runs `kyverno test tests || true` so that the job always reaches the next step."
+        explanation: "`|| true` hides the failure, so the job never fails."
+      - id: c
+        text: "A script that runs `kyverno test tests` and then `echo done` as the last command, without `set -e`."
+        explanation: "Without `set -e` the exit code of `echo` replaces the exit code of the test, so the job passes."
+      - id: d
+        text: "A script that runs `kyverno apply` on one policy and ignores the exit code."
+        explanation: "Ignoring the exit code removes the gate. `kyverno apply` is also not a test with expectations."
+    correct_option: a
+    explanation: "`kyverno test` returns a non-zero exit code when an expectation differs. The script must pass that exit code on, and must not depend on the current directory."
+
+  - id: ats010-060-q10
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Use kyverno jp to check a JMESPath expression"
+    source_readings:
+      - sections/section-060/module-02/course-03-detailed-results-and-jp.md
+    prompt: |-
+      You write a policy variable that must return the list of container images of a Pod. You want to check the JMESPath expression on a sample manifest before you put it in the policy. Which command does this?
+    options:
+      - id: a
+        text: "`kyverno test -i pod.yaml spec.containers[*].image`"
+        explanation: "`kyverno test` runs test files. It does not evaluate a single expression."
+      - id: b
+        text: "`kyverno apply --set spec.containers[*].image pod.yaml`"
+        explanation: "`--set` supplies variable values. It does not evaluate expressions on a file."
+      - id: c
+        text: "`kyverno jp query -i pod.yaml 'spec.containers[*].image'`"
+        explanation: "Correct. `kyverno jp query` evaluates a JMESPath expression on the input file and prints the JSON result."
+      - id: d
+        text: "`kubectl explain pod.spec.containers.image`"
+        explanation: "`kubectl explain` shows API field documentation. It does not run a query on your file."
+    correct_option: c
+    explanation: "`kyverno jp query -i <file> <expression>` evaluates the expression on the file, so you can check the result before you use it in a policy."
+

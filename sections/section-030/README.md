@@ -8,9 +8,9 @@ None of the settings in this section change *what* a rule matches or *what actio
 
 ## What You Will Master
 
-By completing this section, you will acquire two core Kyverno competencies:
-*   **Policy-Level Settings:** The fail-open/fail-closed tradeoff between `failurePolicy: Fail` and `Ignore`, how `webhookTimeoutSeconds` bounds the API server's patience with the admission webhook, what `schemaValidation` actually checks, and when to deliberately set `background: false` on an admission-only rule.
-*   **Rule-Level Settings:** How `applyRules: "One"` turns a rule list into a priority-ordered, mutually-exclusive decision instead of a cumulative stack, and how `generateExisting` and `mutateExistingOnPolicyUpdate` let `generate` and `mutate` rules retroactively reach resources that already existed before the policy did.
+By completing this section, you will acquire two core Kyverno competencies, plus the policy-wide switches that go with them:
+*   **Policy-Level Settings:** The fail-open/fail-closed tradeoff between `failurePolicy: Fail` and `Ignore`, how `webhookTimeoutSeconds` bounds the API server's patience with the admission webhook, what `schemaValidation` actually checks, when to deliberately set `background: false` on an admission-only rule, and how `admission`, `validationFailureAction` and `emitWarning` combine.
+*   **Rule-Level Settings:** How `applyRules: "One"` turns a rule list into a priority-ordered, mutually-exclusive decision instead of a cumulative stack, and how `generateExisting` and `mutateExistingOnPolicyUpdate` let `generate` and `mutate` rules retroactively reach resources that already existed before the policy did, and what a backfill needs to succeed.
 
 ---
 
@@ -22,6 +22,9 @@ This section is divided into two sequential modules, each paired with a dedicate
 *   **Module Reader:** **[Module 1: Policy-Level Settings](./module-01/course.md)**
     1. [failurePolicy & webhookTimeoutSeconds](./module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md)
     2. [schemaValidation & Policy-wide background](./module-01/course-02-schemavalidation-and-policy-wide-background.md)
+    3. [admission, validationFailureAction & emitWarning](./module-01/course-03-admission-validationfailureaction-and-emitwarning.md)
+    4. [Summary](./module-01/course-04-summary.md)
+*   **Playground (free exploration, no grading):** `sections/section-030/module-01/playground` (environment name `ats-010-playground-030-01`; the module reader launches it)
 *   **Practice Lab Sandbox:** **`sections/section-030/module-01/labs/lab-01`**
 *   **Lab Run Command:**
     ```bash
@@ -33,6 +36,9 @@ This section is divided into two sequential modules, each paired with a dedicate
 *   **Module Reader:** **[Module 2: Rule-Level Settings](./module-02/course.md)**
     1. [applyRules: All vs One](./module-02/course-01-applyrules-all-vs-one.md)
     2. [generateExisting & mutateExistingOnPolicyUpdate](./module-02/course-02-generateexisting-and-mutateexistingonpolicyupdate.md)
+    3. [Backfilling safely: permissions, synchronize & rollout](./module-02/course-03-backfilling-safely.md)
+    4. [Summary](./module-02/course-04-summary.md)
+*   **Playground (free exploration, no grading):** `sections/section-030/module-02/playground` (environment name `ats-010-playground-030-02`; the module reader launches it)
 *   **Practice Lab Sandbox:** **`sections/section-030/module-02/labs/lab-01`**
 *   **Lab Run Command:**
     ```bash
@@ -46,6 +52,7 @@ This section is divided into two sequential modules, each paired with a dedicate
     ```bash
     astrona run --git git@github.com:astrona-io/ATS010.git -c sections/section-030/capstone/labs/lab-01
     ```
+*   **Status:** UNTESTED - built from static checks only; not yet booted (as are the two module labs above).
 *   **Hands-on Objective:** Connect the dots. Enforce resource limits with tuned `failurePolicy`/`webhookTimeoutSeconds`, retroactively generate an audit `ConfigMap` into a pre-existing namespace with `generateExisting`, and apply priority-ordered tier labeling with `applyRules: "One"`.
 
 ---
@@ -54,4 +61,4 @@ This section is divided into two sequential modules, each paired with a dedicate
 
 Test your theoretical knowledge and diagnostic reasoning before tackling the practical lab missions:
 
-*   **[Take the Section 030 Knowledge Check Quiz](./quiz.md)**
+*   **[Take the Section 030 Knowledge Check Quiz](./quiz.yaml)**

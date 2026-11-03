@@ -1,5 +1,7 @@
 # Solution Walkthrough
 
+> UNTESTED - built from static checks only; not yet booted. Run `astrona submit --git git@github.com:astrona-io/ATS010.git -c sections/section-030/capstone/labs/lab-01` after each part: the limits check after Step 2, the audit-config check after Step 4, the tier check after Step 6. Wait for each policy with `kubectl wait --for=condition=Ready clusterpolicy/<name> --timeout=90s` before you test it, and give the background controller a few seconds for the backfill.
+
 Follow these steps to author, apply, and prove out all three policies:
 
 ---

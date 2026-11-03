@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Rule-Level Settings (PLAYGROUND) - playground environment. A clean sandbox:
+# it starts, installs Kyverno v1.13.2, creates namespaces and Deployments that
+# already exist before any policy, then stays running for free exploration.
+# No task, no grading, no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-030-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# What the learner starts with: Kyverno v1.13.2 with all four controllers
+# ready, the namespaces team-a, team-b and team-c, and a Deployment `web` in
+# team-a and in team-b. No ClusterPolicy exists.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, grant the background controller the rights the tasks need, create the pre-existing namespaces and Deployments"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

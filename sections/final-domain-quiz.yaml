@@ -1,0 +1,901 @@
+# Final domain knowledge check across all six sections.
+---
+schema_version: 1
+kind: question_bank
+id: ats010-final
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam
+  questions.
+scope:
+  type: domain
+  id: applying-policies
+  title: Applying Policies
+questions:
+- id: ats010-final-q01
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain that the cluster only enforces the policy that was last
+    applied
+  source_readings:
+  - sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+  prompt: You edit the `match` block of a `ClusterPolicy` in your Git working copy
+    to fix a bug, but you forget to run `kubectl apply -f`. Which version does the
+    cluster enforce?
+  options:
+  - id: a
+    text: The fixed version, because Kyverno watches the filesystem of your machine.
+    explanation: Kyverno runs in the cluster and has no access to files on your machine.
+  - id: b
+    text: Neither version, because Kyverno disables a policy whose source file has
+      changed.
+    explanation: Kyverno has no link between a policy object and a local file.
+  - id: c
+    text: The version that was last applied to the cluster. The local edit has no
+      effect until you apply it.
+    explanation: Correct. A policy is an object stored in the cluster. Only an apply,
+      create or edit changes it.
+  - id: d
+    text: Both versions, merged field by field.
+    explanation: No merge happens until you run `kubectl apply`, and then the new
+      file replaces the changed fields.
+  correct_option: c
+  explanation: A `ClusterPolicy` is a resource stored in the cluster. The cluster
+    reflects what was last applied, not what your local file says.
+- id: ats010-final-q02
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Check a policy change with Kyverno's policy webhook before it
+    is stored
+  source_readings:
+  - sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+  prompt: A pipeline must find out whether Kyverno will accept a changed policy file,
+    and must not store anything in the cluster. Which command does this?
+  options:
+  - id: a
+    text: "`kubectl apply --dry-run=server -f policy.yaml`"
+    explanation: Correct. The request goes through the API server and admission, including
+      Kyverno's policy webhook, and nothing is stored.
+  - id: b
+    text: "`kubectl apply --dry-run=client -f policy.yaml`"
+    explanation: A client dry run never contacts the cluster, so Kyverno's checks
+      do not run.
+  - id: c
+    text: "`kubectl get clusterpolicy -o yaml`"
+    explanation: This command only shows what is already stored.
+  - id: d
+    text: "`kubectl explain clusterpolicy.spec`"
+    explanation: This command shows the field list of the installed version. It does
+      not check your file.
+  correct_option: a
+  explanation: 'Only a server-side dry run sends the request through Kyverno''s policy
+    webhook. `kubectl diff -f` is another safe check: it exits with 1 when the cluster
+    differs from the file.'
+- id: ats010-final-q03
+  type: single_choice
+  difficulty: beginner
+  learning_objective: State what Audit mode does with a violating resource
+  source_readings:
+  - sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
+  prompt: 'A `ClusterPolicy` with `validationFailureAction: Audit` is live. A user
+    creates a Pod that breaks its rule. What is true right after the request?'
+  options:
+  - id: a
+    text: The API server rejects the Pod and nothing is created.
+    explanation: This describes `Enforce`.
+  - id: b
+    text: The Pod is created and Kyverno deletes it a few seconds later.
+    explanation: Kyverno never deletes a resource because of a `validate` result.
+  - id: c
+    text: The Pod is created and Kyverno mutates it until it passes.
+    explanation: A `validate` rule never changes a resource. Changing resources is
+      the job of `mutate` rules.
+  - id: d
+    text: The Pod is created and the violation is recorded as a result in a `PolicyReport`.
+    explanation: Correct. `Audit` admits the request and records the violation.
+  correct_option: d
+  explanation: "`Audit` admits the resource and records the violation in a `PolicyReport`
+    or `ClusterPolicyReport`."
+- id: ats010-final-q04
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Stage an Enforce rollout per namespace with validationFailureActionOverrides
+  source_readings:
+  - sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
+  prompt: The `payments` team has fixed every violation of a new rule. Other namespaces
+    still have many. You want `Enforce` in `payments` and `Audit` everywhere else,
+    without two copies of the policy. What do you use?
+  options:
+  - id: a
+    text: "`spec.background: false` on the policy."
+    explanation: "`background` controls the scan of existing resources, not the action
+      per namespace."
+  - id: b
+    text: "`spec.validationFailureActionOverrides` with `action: Enforce` and `namespaces:
+      [payments]`, and `validationFailureAction: Audit` as the default."
+    explanation: Correct. The overrides list changes the action for the named namespaces,
+      and the top-level value applies to the rest.
+  - id: c
+    text: Two `ClusterPolicy` objects with the same name, one per namespace.
+    explanation: Two objects cannot share a name, and one policy can already do this.
+  - id: d
+    text: A `PolicyException` for every namespace except `payments`.
+    explanation: An exception exempts resources from a rule. It does not change the
+      failure action.
+  correct_option: b
+  explanation: "`validationFailureActionOverrides` sets the action per namespace or
+    namespace selector inside one policy."
+- id: ats010-final-q05
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Describe what a background scan does to resources that already
+    exist
+  source_readings:
+  - sections/section-010/module-02/course-01-background-scanning-already-existing-resources.md
+  prompt: 'A policy with `background: true` and `validationFailureAction: Enforce`
+    is applied to a namespace that has three running Deployments that break its rule.
+    What happens to the three Deployments?'
+  options:
+  - id: a
+    text: Kyverno deletes them at the next scan.
+    explanation: A scan never deletes anything.
+  - id: b
+    text: Kyverno changes them so that they pass.
+    explanation: Only `mutate` rules change resources, and background scanning applies
+      to `validate` rules.
+  - id: c
+    text: They keep running unchanged, and the background scan records failing results
+      for them in `PolicyReport` objects.
+    explanation: Correct. A scan only reports, whatever the failure action is.
+  - id: d
+    text: They are unaffected and not reported, because `Enforce` only applies at
+      admission.
+    explanation: "`background: true` is what produces results for existing resources."
+  correct_option: c
+  explanation: Background scanning re-evaluates existing resources against `validate`
+    rules and reports. It does not block, delete or change them.
+- id: ats010-final-q06
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Match subresource requests such as Pod/exec and set the CONNECT
+    operation
+  source_readings:
+  - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+  - sections/section-020/module-02/course-01-selector-and-operations.md
+  prompt: 'A security team writes a rule with `kinds: [Pod]` and a `deny` that should
+    block `kubectl exec` into production Pods. The rule applies cleanly, but `kubectl
+    exec` still works. What is the most direct fix?'
+  options:
+  - id: a
+    text: Change `validationFailureAction` from `Audit` to `Enforce` only; the match
+      block is already correct.
+    explanation: The action matters for blocking, but it does not change which requests
+      the rule sees. A bare `Pod` never selects `exec` requests.
+  - id: b
+    text: Add `exec` to the namespace list so the rule covers the exec namespace.
+    explanation: "`exec` is a subresource, not a namespace."
+  - id: c
+    text: 'Match the subresource with `kinds: [Pod/exec]` and set `operations: [CONNECT]`.'
+    explanation: Correct. `kubectl exec` is a `CONNECT` request to the `pods/exec`
+      subresource. A `Pod` entry matches the Pod object itself, so the rule must name
+      `Pod/exec`.
+  - id: d
+    text: 'Use the wildcard `names: ["*"]` so every Pod name is matched.'
+    explanation: A name wildcard narrows or widens by name; it does not make the rule
+      see a different kind of request.
+  correct_option: c
+  explanation: "`kubectl exec` is a `CONNECT` request to the `pods/exec` subresource.
+    A bare `Pod` kind matches the Pod object only, so the rule needs `Pod/exec` and
+    `operations: [CONNECT]`."
+- id: ats010-final-q07
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain that name wildcards compare metadata.name only and are
+    not a security boundary
+  source_readings:
+  - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+  prompt: 'A rule is scoped with `kinds: [ConfigMap]` and `names: ["*-secrets"]` to
+    protect sensitive data. A developer stores a database password in a ConfigMap
+    named `db-password`. What happens?'
+  options:
+  - id: a
+    text: The rule catches it, because Kyverno scans ConfigMap values for sensitive
+      words.
+    explanation: Kyverno does not inspect content to decide whether a name filter
+      matches.
+  - id: b
+    text: The rule does not evaluate it at all, because `names` compares only `metadata.name`
+      and `db-password` does not end in `-secrets`.
+    explanation: Correct. A name pattern is a naming convention, not a statement about
+      what the object contains, so anything created under a different name is out
+      of scope.
+  - id: c
+    text: The rule catches it, because `*-secrets` is a regular expression matching
+      sensitive-sounding names.
+    explanation: Kyverno wildcards are simple globs (`*` and `?`), not regular expressions.
+  - id: d
+    text: Kyverno renames the ConfigMap to end in `-secrets` before evaluating it.
+    explanation: Kyverno never renames an object to make it match.
+  correct_option: b
+  explanation: "`names` compares only `metadata.name`. A password in `db-password`
+    is out of scope, which is why a name pattern is a convention and not a security
+    boundary."
+- id: ats010-final-q08
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Predict which names a pattern using * and ? matches
+  source_readings:
+  - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+  prompt: 'A rule uses `names: ["web-?", "api-*"]`. Which set of ConfigMap names contains
+    ONLY names that the rule selects?'
+  options:
+  - id: a
+    text: "`web-10`, `api-v1`, `my-api-v1`"
+    explanation: "`web-10` has two characters after `web-` and `?` is exactly one;
+      `my-api-v1` does not start with `api-`."
+  - id: b
+    text: "`web-`, `web-1`, `api`"
+    explanation: "`web-` has no character for `?` to match, and `api` lacks the `-`
+      that the pattern requires."
+  - id: c
+    text: "`web-ab`, `api-`, `web-1`"
+    explanation: "`web-ab` has two characters after `web-`, so `?` does not match
+      it."
+  - id: d
+    text: "`web-1`, `api-`, `api-gateway`"
+    explanation: Correct. `?` matches exactly one character (`web-1`) and `*` matches
+      zero or more (`api-`, `api-gateway`).
+  correct_option: d
+  explanation: "`?` matches exactly one character and `*` matches zero or more. `web-1`,
+    `api-` and `api-gateway` all match; the other sets each contain a name that does
+    not."
+- id: ats010-final-q09
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain why a static namespaces list does not follow new namespaces
+  source_readings:
+  - sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
+  prompt: 'A policy lists `namespaces: [shop-prod]`. Next month a team creates `shop-prod-eu`
+    and expects the same guardrail. Is it covered?'
+  options:
+  - id: a
+    text: No. The list is static; `shop-prod-eu` is a different string and must be
+      added, or the entry rewritten with a wildcard such as `shop-prod*`.
+    explanation: Correct. `namespaces` names namespaces literally, with optional wildcards
+      you write yourself.
+  - id: b
+    text: Yes, because `namespaces` entries are prefix matches by default.
+    explanation: Entries match whole names unless you add a wildcard.
+  - id: c
+    text: Yes, because Kyverno treats namespaces that share a prefix as the same environment.
+    explanation: Kyverno has no notion of related namespaces.
+  - id: d
+    text: No, and it can only be covered by deleting and recreating the policy.
+    explanation: Editing the policy is enough; no recreation is needed.
+  correct_option: a
+  explanation: The `namespaces` list is static and compares whole names. Add the new
+    namespace, use a wildcard, or switch to a label-driven `namespaceSelector`.
+- id: ats010-final-q10
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Predict the effect of relabeling a namespace on a namespaceSelector
+    policy
+  source_readings:
+  - sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
+  prompt: 'A rule uses `namespaceSelector: {matchLabels: {env: prod}}`. An engineer
+    runs `kubectl label namespace shop-dev env=prod --overwrite` for an unrelated
+    reason. What is the effect on the policy?'
+  options:
+  - id: a
+    text: None. `namespaceSelector` is evaluated once, when the policy is applied.
+    explanation: It is evaluated against live namespace labels on each admission request.
+  - id: b
+    text: Kyverno rejects the `kubectl label` command because it would change an existing
+      policy's scope.
+    explanation: Kyverno does not block label changes just because a policy reads
+      the label (unless you write a rule for that).
+  - id: c
+    text: Resources created in `shop-dev` from now on are in scope of the rule, with
+      no policy edit.
+    explanation: Correct. The scope follows the live labels on the Namespace object,
+      which is both the strength and the risk of `namespaceSelector`.
+  - id: d
+    text: The rule stops applying to `shop-dev`.
+    explanation: The label now matches, so the namespace moves into scope, not out
+      of it.
+  correct_option: c
+  explanation: "`namespaceSelector` reads the live labels on the Namespace. Relabeling
+    `shop-dev` to `env=prod` brings new admission requests there into scope without
+    any policy change."
+- id: ats010-final-q11
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Predict what happens to a matching request when Kyverno's admission
+    controller is unreachable and the policy uses the default failurePolicy
+  source_readings:
+  - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+  prompt: A `ClusterPolicy` enforces a required label on Pods and leaves `failurePolicy`
+    at its default. A bad rollout leaves Kyverno's admission controller with no ready
+    pods. A developer creates a Pod that matches the policy. What happens?
+  options:
+  - id: a
+    text: The Pod is admitted, because Kyverno cannot be reached to say otherwise.
+    explanation: 'This describes `failurePolicy: Ignore`, not the default.'
+  - id: b
+    text: The API server retries until Kyverno comes back, then applies the policy.
+    explanation: The API server waits only up to `webhookTimeoutSeconds` and then
+      applies `failurePolicy`. It does not retry indefinitely.
+  - id: c
+    text: The request is queued and replayed once the admission controller recovers.
+    explanation: Kubernetes admission has no queue like that.
+  - id: d
+    text: The Pod is denied, because the default `Fail` closes the door when the webhook
+      cannot answer.
+    explanation: Correct. The default `failurePolicy` is `Fail` (fail closed), and
+      the API server applies it, so it works even though Kyverno is not running.
+  correct_option: d
+  explanation: The default `failurePolicy` is `Fail`. When the webhook times out or
+    cannot be reached, the API server denies the request.
+- id: ats010-final-q12
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Choose failurePolicy for a policy based on its risk profile
+    and Kyverno's availability
+  source_readings:
+  - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+  prompt: A platform team has two policies. One blocks privileged containers. The
+    other asks for a `cost-center` label on Deployments, and it matches every Deployment
+    in the cluster. Kyverno runs with one replica and sometimes restarts during upgrades.
+    Which choice fits best?
+  options:
+  - id: a
+    text: "`Ignore` for the privileged-container policy and `Fail` for the label policy."
+    explanation: This is the wrong way round. A silent gap in a security guardrail
+      is the worse outcome.
+  - id: b
+    text: "`Fail` for both, because `Fail` is always the safe setting."
+    explanation: "`Fail` on a policy that matches every Deployment means a Kyverno
+      restart blocks all Deployment changes in the cluster, for a convention."
+  - id: c
+    text: "`Fail` for the privileged-container policy and `Ignore` for the label policy,
+      and add more admission controller replicas."
+    explanation: Correct. The guardrail stays closed, the convention stays available
+      during an outage, and more replicas shrink the failure window.
+  - id: d
+    text: "`Ignore` for both, because the timeout will catch problems anyway."
+    explanation: The timeout only moves the moment at which `failurePolicy` takes
+      over. With `Ignore`, the privileged policy would be silently off during an outage.
+  correct_option: c
+  explanation: Use `Fail` for the few policies where one bad resource is an incident,
+    and `Ignore` for conventions that match many requests, and keep Kyverno itself
+    highly available.
+- id: ats010-final-q13
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: State what webhookTimeoutSeconds controls and its limits
+  source_readings:
+  - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+  prompt: 'An engineer sets `webhookTimeoutSeconds: 45` on a policy to be safe with
+    slow API calls in its rules. What happens, and what does the field control?'
+  options:
+  - id: a
+    text: The policy is rejected at apply time, because the allowed range is 1 to
+      30. The field is how long the API server waits for Kyverno's answer.
+    explanation: Correct. The range is 1 to 30 with a default of 10, and the value
+      is the wait before `failurePolicy` takes over.
+  - id: b
+    text: The policy is accepted, and the background scan waits 45 seconds between
+      runs.
+    explanation: The field has nothing to do with background scan timing.
+  - id: c
+    text: The policy is accepted and Kyverno caps it at 30 silently.
+    explanation: Kyverno rejects out-of-range values instead of capping them.
+  - id: d
+    text: The policy is accepted, and `generate` rules wait 45 seconds before they
+      create anything.
+    explanation: The field is about the admission call, not about generate timing.
+  correct_option: a
+  explanation: "`webhookTimeoutSeconds` is the time the API server waits for the webhook,
+    1 to 30 seconds, default 10. After that `failurePolicy` decides."
+- id: ats010-final-q14
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain what schemaValidation does and does not change
+  source_readings:
+  - sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
+  prompt: 'A teammate wants to make a noisy `validate` policy "less strict" and proposes
+    setting `schemaValidation: false`. What is the effect of that field?'
+  options:
+  - id: a
+    text: Resources that fail the `pattern` are now admitted.
+    explanation: The field does not touch how rules validate other resources.
+  - id: b
+    text: Kyverno skips the extra apply-time comparison of what the policy's `mutate`
+      and `generate` rules produce with the resource schema. Enforcement is unchanged.
+    explanation: Correct. It affects only the check on the policy itself, and newer
+      releases treat the field as deprecated.
+  - id: c
+    text: The policy's `failurePolicy` changes to `Ignore`.
+    explanation: The two settings are independent.
+  - id: d
+    text: "`validate` and `mutate` can now be combined in one rule."
+    explanation: Kyverno's own rule checks still reject that.
+  correct_option: b
+  explanation: "`schemaValidation` concerns the policy YAML itself. It never relaxes
+    enforcement; use `validationFailureAction` or exceptions for that."
+- id: ats010-final-q15
+  type: single_choice
+  difficulty: advanced
+  learning_objective: Decide when background must be false and what happens with caller-dependent
+    variables
+  source_readings:
+  - sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
+  prompt: A `validate` rule denies a request when `{{ request.userInfo.username }}`
+    is not in an allow-list. The policy leaves `background` at its default. What is
+    the right reading of the situation?
+  options:
+  - id: a
+    text: Nothing is wrong. A background scan has the same caller information as an
+      admission request.
+    explanation: A scan has only the stored resource, with no caller.
+  - id: b
+    text: 'Set `admission: false` so only scans run.'
+    explanation: That would remove the rule from the only path where the caller is
+      known.
+  - id: c
+    text: 'Set `failurePolicy: Ignore`, which tells scans to skip caller data.'
+    explanation: "`failurePolicy` is about the webhook call, not about scans."
+  - id: d
+    text: 'Set `background: false`. The rule only makes sense at admission, and Kyverno
+      typically rejects caller variables with `background: true` at apply time.'
+    explanation: Correct. Caller data exists only on the admission request, so the
+      policy is admission-only.
+  correct_option: d
+  explanation: 'Rules that use `request.userInfo`, roles or the operation need `background:
+    false`, because a background scan has no caller.'
+- id: ats010-final-q16
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain why mutate rules run before validate rules, and use
+    that order on purpose
+  source_readings:
+  - sections/section-040/module-01/course-02-validate-rules-and-order.md
+  prompt: 'The `starfleet` namespace has an `Enforce` validate policy that requires
+    every pod to carry an `owner` label. A separate mutate policy matches pods in
+    `starfleet` and adds `owner: platform` when the label is missing. A developer
+    runs `kubectl run probe --image=registry.k8s.io/pause:3.9 -n starfleet` with no
+    labels. What happens?'
+  options:
+  - id: a
+    text: 'The pod is admitted and stored with `owner: platform`, because the mutating
+      webhooks run before the validating webhooks.'
+    explanation: Correct. Kyverno's mutate rules finish before any validate rule sees
+      the object, so the validate rule finds the label.
+  - id: b
+    text: The pod is rejected, because the validate rule checks the YAML as the developer
+      wrote it.
+    explanation: Validate rules check the object after mutation, not the original
+      YAML.
+  - id: c
+    text: The pod is admitted without a label, and a policy report records the missing
+      label.
+    explanation: That is the behaviour of `Audit`, and the object would also not have
+      the label added by the mutate rule.
+  - id: d
+    text: The result depends on the alphabetical order of the two policy names.
+    explanation: The API server always calls mutating webhooks before validating webhooks,
+      whatever the policy names are.
+  correct_option: a
+  explanation: The API server calls the mutating webhooks before the validating webhooks,
+    so the mutate rule adds the label and the validate rule then passes.
+- id: ats010-final-q17
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Write a mutate rule with patchStrategicMerge that adds a default
+    only when the author did not set one
+  source_readings:
+  - sections/section-040/module-01/course-01-mutate-rules.md
+  prompt: 'A mutate rule must give every pod an `owner` label of `platform`, but a
+    pod that already sets `owner: ops` must keep `ops`. Which `patchStrategicMerge`
+    fragment does this?'
+  options:
+  - id: a
+    text: "`metadata: { labels: { owner: platform } }`"
+    explanation: Without an anchor the merge patch replaces the author's value with
+      `platform`.
+  - id: b
+    text: "`metadata: { labels: { (owner): platform } }`"
+    explanation: The parentheses make a conditional anchor that selects objects where
+      `owner` already equals `platform`. It is not an add-if-missing anchor.
+  - id: c
+    text: "`metadata: { labels: { +(owner): platform } }`"
+    explanation: Correct. The `+()` add-if-not-present anchor adds the label only
+      when the pod has no `owner` label.
+  - id: d
+    text: "`metadata: { labels: { =(owner): platform } }`"
+    explanation: The `=()` anchor is a conditional anchor for validate patterns. It
+      does not add a missing field.
+  correct_option: c
+  explanation: The `+()` anchor adds a field only when it is absent, so explicit values
+    from the author stay.
+- id: ats010-final-q18
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Write a mutate rule with patchesJson6902 and explain how it
+    differs from a merge patch
+  source_readings:
+  - sections/section-040/module-01/course-01-mutate-rules.md
+  prompt: A platform team must make sure that every pod in `starfleet` has `automountServiceAccountToken`
+    set to `false`, even when the author wrote `true`. Which approach gives that exact
+    result?
+  options:
+  - id: a
+    text: 'A merge patch with `+(automountServiceAccountToken): false`.'
+    explanation: The `+()` anchor keeps an existing value, so a pod that sets `true`
+      stays `true`.
+  - id: b
+    text: 'A validate rule with `validationFailureAction: Audit`.'
+    explanation: Audit only reports; it changes nothing.
+  - id: c
+    text: 'A merge patch that lists `containers` with the conditional anchor `(name):
+      "*"`.'
+    explanation: That anchor patches container fields, not the pod-level field.
+  - id: d
+    text: A `patchesJson6902` rule with an `add` operation on `/spec/automountServiceAccountToken`
+      and the value `false`.
+    explanation: Correct. The `add` operation sets the field to the given value even
+      when one exists.
+  correct_option: d
+  explanation: A JSON patch `add` writes the value whatever the author wrote, so it
+    gives a fixed result, while `+()` keeps the author's value.
+- id: ats010-final-q19
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Write a mutate rule with patchesJson6902 and explain how it
+    differs from a merge patch
+  source_readings:
+  - sections/section-040/module-01/course-01-mutate-rules.md
+  prompt: A `patchesJson6902` rule uses the operation `add` with the path `/metadata/labels/owner`.
+    A developer creates a pod that has no labels at all. What is the most likely result?
+  options:
+  - id: a
+    text: Kyverno creates the `labels` map and adds `owner`, because a JSON patch
+      behaves like a merge patch.
+    explanation: A JSON patch does not create missing parent objects. A merge patch
+      does.
+  - id: b
+    text: The patch fails because `/metadata/labels` does not exist, so the request
+      is not processed as intended.
+    explanation: Correct. `add` needs the parent object to exist. Use a merge patch
+      when you do not know whether the parent is present.
+  - id: c
+    text: The pod is admitted unchanged and no error is shown.
+    explanation: A failing JSON patch is reported as an error, not ignored silently.
+  - id: d
+    text: Kyverno converts the rule into a validate rule.
+    explanation: Kyverno never changes the type of a rule.
+  correct_option: b
+  explanation: A JSON patch `add` needs the parent object to exist. A strategic merge
+    patch creates missing parents.
+- id: ats010-final-q20
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Write a validate rule with pattern and a validate rule with
+    deny conditions, and choose between them
+  source_readings:
+  - sections/section-040/module-01/course-02-validate-rules-and-order.md
+  prompt: 'A team must block the deletion of ConfigMaps in `starfleet` that carry
+    the label `protected: "true"`. Which design is correct?'
+  options:
+  - id: a
+    text: 'A `pattern` rule that requires `metadata.labels.protected: "true"` on every
+      ConfigMap, with `background: true`.'
+    explanation: A pattern checks the object that is created or updated. It does not
+      decide on the DELETE operation.
+  - id: b
+    text: A `mutate` rule that removes the label `protected` on DELETE.
+    explanation: A mutate rule cannot stop a deletion and removing the label would
+      weaken the protection.
+  - id: c
+    text: 'A `deny` rule matched on the ConfigMap kind with `operations: [DELETE]`,
+      a condition on `request.oldObject.metadata.labels.protected`, and `background:
+      false`.'
+    explanation: Correct. On DELETE the new object is empty, so the rule reads `request.oldObject`.
+      A rule that uses `request` cannot run in the background.
+  - id: d
+    text: A `deny` rule that reads `request.object.metadata.labels.protected`.
+    explanation: On a DELETE request `request.object` is empty, so the condition would
+      never see the label.
+  correct_option: c
+  explanation: 'Use `deny` for decisions about the operation, and read `request.oldObject`
+    for DELETE. Set `background: false` for rules that use `request`.'
+- id: ats010-final-q21
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Choose the report kind that holds the result for a given resource
+  source_readings:
+  - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+  prompt: A `ClusterPolicy` named `require-team` validates both Pods and Namespaces.
+    An engineer looks for the verdict about the Namespace `payments` with `kubectl
+    get policyreport -A` and finds nothing. Why?
+  options:
+  - id: a
+    text: Because `require-team` is a `ClusterPolicy`, all its results go to `ClusterPolicyReport`
+      objects.
+    explanation: The kind of the policy does not choose the report kind. The scope
+      of the checked resource does.
+  - id: b
+    text: Because Namespaces never produce results.
+    explanation: Namespaces can be validated like any other resource and produce results.
+  - id: c
+    text: Because the report was deleted when the policy was applied.
+    explanation: Applying a policy does not delete reports.
+  - id: d
+    text: Because a Namespace is cluster-scoped, so its result is in a `ClusterPolicyReport`,
+      which `kubectl get policyreport` does not list.
+    explanation: Correct. Cluster-scoped resources are reported in `ClusterPolicyReport`,
+      namespaced resources in `PolicyReport`.
+  correct_option: d
+  explanation: The scope of the checked resource decides the report kind. A Namespace
+    is cluster-scoped, so its verdict is in `kubectl get clusterpolicyreport`.
+- id: ats010-final-q22
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Name the API group and the result values of a policy report
+  source_readings:
+  - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+  prompt: You write a script that prints the `result` field of every entry in a report's
+    `results` list. Which set of values may it see?
+  options:
+  - id: a
+    text: "`pass`, `fail`, `warn`, `error` and `skip`"
+    explanation: Correct. These are the five values of the `wgpolicyk8s.io` result
+      field.
+  - id: b
+    text: "`allowed`, `denied` and `audited`"
+    explanation: These are not result values.
+  - id: c
+    text: "`success` and `failure` only"
+    explanation: The values are `pass` and `fail`, and there are three more.
+  - id: d
+    text: "`Enforce`, `Audit` and `Ignore`"
+    explanation: "`Enforce` and `Audit` are values of `validationFailureAction`, not
+      of a result."
+  correct_option: a
+  explanation: A result is one of `pass`, `fail`, `warn`, `error` or `skip`. An `error`
+    means the rule could not be evaluated.
+- id: ats010-final-q23
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Read the summary counters of a report correctly
+  source_readings:
+  - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+  prompt: 'A colleague reads `summary.fail: 0` from one PolicyReport in `payments`
+    and says the whole namespace is clean. In your cluster, reports are generally
+    one per resource. What is wrong with the conclusion?'
+  options:
+  - id: a
+    text: Nothing; the summary always covers the whole namespace.
+    explanation: The counters cover only the results of that one report.
+  - id: b
+    text: The counters belong to that single report, so other reports in the namespace
+      may still contain failures. All reports must be totalled.
+    explanation: Correct. Each `summary` tallies its own `results`; the namespace
+      total is the sum over all reports.
+  - id: c
+    text: "`summary.fail` counts resources, not results."
+    explanation: It counts results of that report, and a resource failing two rules
+      counts twice.
+  - id: d
+    text: A `fail` is only recorded in the `ClusterPolicyReport`.
+    explanation: Failures of namespaced resources are in `PolicyReport` objects.
+  correct_option: b
+  explanation: A `summary` describes one report. Total the counters of every report
+    in the namespace, or count the results with `jq`.
+- id: ats010-final-q24
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Write a version-tolerant query that lists failing resources
+  source_readings:
+  - sections/section-050/module-01/course-02-querying-reports.md
+  prompt: You must write a script for several clusters that run different Kyverno
+    versions. It lists the name of every failing resource from `kubectl get policyreport
+    -A -o json`. Which approach is the most robust?
+  options:
+  - id: a
+    text: Read `.items[0].results[0].resources[0].name` only.
+    explanation: This reads one result of one report and assumes a `resources` list.
+  - id: b
+    text: Parse the human-readable output of `kubectl get policyreport -A` with `awk`.
+    explanation: The columns differ between versions.
+  - id: c
+    text: Download JSON and select results with `result == "fail"`, reading the name
+      from `scope.name` and falling back to `resources[0].name`.
+    explanation: Correct. It works for per-resource and aggregated layouts and for
+      results with or without a `resources` list.
+  - id: d
+    text: Select reports by a Kyverno label whose name you copied from one cluster.
+    explanation: Label keys are a version detail and may differ.
+  correct_option: c
+  explanation: Walk `items[]` and `results[]?`, filter on `result`, and read the name
+    from `scope` with a fallback to `resources`.
+- id: ats010-final-q25
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain why a freshly applied policy may show no results yet
+  source_readings:
+  - sections/section-050/module-02/course-01-admission-and-background-scan.md
+  prompt: You apply a new `Audit` policy to a cluster that has run for a year. Ten
+    seconds later `kubectl get policyreport -A` shows nothing about the old resources.
+    What is the correct reading?
+  options:
+  - id: a
+    text: The old resources are compliant, because there are no results.
+    explanation: An empty answer shortly after a change can mean nothing has been
+      written yet.
+  - id: b
+    text: The policy cannot check old resources, because admission control only sees
+      new requests.
+    explanation: The background scan checks existing resources when `background` is
+      true.
+  - id: c
+    text: The reports controller must be restarted before it scans.
+    explanation: No restart is needed.
+  - id: d
+    text: Old resources are checked by a background scan and reports are written asynchronously,
+      so wait, and check that the policy is `Ready`, before concluding.
+    explanation: Correct. Results for pre-existing resources come from the background
+      scan, aggregated by the reports controller.
+  correct_option: d
+  explanation: Admission has no memory of old resources. The reports controller scans
+    them in the background and aggregates the results, so allow a short wait.
+- id: ats010-final-q26
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Read the summary counters of kyverno apply and explain why a
+    resource is skipped
+  source_readings:
+  - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+  prompt: 'A policy rule matches Pods in the namespace `lab`. You run `kyverno apply`
+    on a Pod manifest that has no `metadata.namespace`. The command exits 0 and the
+    summary shows `skip: 1`. What does this tell you?'
+  options:
+  - id: a
+    text: The Pod is compliant, because skip is another word for pass.
+    explanation: Skip is not pass. It counts resources that the rule did not evaluate.
+  - id: b
+    text: The CLI cannot read the file, so it skipped it and the policy is invalid.
+    explanation: An unreadable file produces an error, not a skip.
+  - id: c
+    text: The match block did not select the Pod, so the rule never ran. The run proves
+      nothing about the Pod.
+    explanation: Correct. The CLI evaluates the match block first. A Pod without the
+      namespace `lab` is not selected, so the rule is skipped. Put the namespace in
+      the manifest.
+  - id: d
+    text: The policy is in Audit mode, so every result is skipped.
+    explanation: The action field does not turn results into skips.
+  correct_option: c
+  explanation: The CLI evaluates match and exclude before it runs a rule. A resource
+    that no match selects is counted as skipped, and the exit code stays 0, so check
+    the counters and give the manifest the namespace.
+- id: ats010-final-q27
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Use --audit-warn so that Audit policies report without failing
+    a CI job
+  source_readings:
+  - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+  prompt: A CI job runs `kyverno apply` for a policy that is still in `Audit` mode.
+    The team wants to see the violations in the job log, but the job must not fail
+    because of them. `Enforce` policies must still fail the job. What do you add to
+    the command?
+  options:
+  - id: a
+    text: The flag `--audit-warn`.
+    explanation: Correct. With `--audit-warn` the CLI counts Audit failures as warnings.
+      The exit code stays 0, and Enforce failures still fail the job.
+  - id: b
+    text: 'Change the policy to `validationFailureAction: Enforce`.'
+    explanation: Enforce failures always make the exit code non-zero, so this makes
+      the job fail more, not less.
+  - id: c
+    text: The flag `--cluster`.
+    explanation: "`--cluster` reads resources from a cluster. It does not change how
+      failures count."
+  - id: d
+    text: The flag `-o` with a file path.
+    explanation: "`-o` saves mutated resources. It has no effect on the exit code
+      of a validate failure."
+  correct_option: a
+  explanation: "`--audit-warn` turns failures of Audit policies into warnings. Failures
+    of Enforce policies still produce a non-zero exit code."
+- id: ats010-final-q28
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Predict the exit code of kyverno apply for Enforce and Audit
+    policies
+  source_readings:
+  - sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+  prompt: 'A colleague says: "An Audit policy never blocks anything, so `kyverno apply`
+    can never fail because of it." You run `kyverno apply` with an Audit policy and
+    a violating Pod and no extra flags. What happens, and why?'
+  options:
+  - id: a
+    text: The exit code is 0, because Audit policies are only written to a report.
+    explanation: That is the live cluster behaviour. The CLI blocks nothing, so it
+      uses the exit code to report failures.
+  - id: b
+    text: The CLI ignores Audit policies and prints `skip` for every rule.
+    explanation: The CLI runs Audit rules like any other rule.
+  - id: c
+    text: The exit code is 0, but only when the Pod is in the namespace `default`.
+    explanation: The namespace does not change how failures are counted.
+  - id: d
+    text: The exit code is non-zero. In the CLI an Audit failure is a failure too,
+      unless `--audit-warn` is set.
+    explanation: Correct. The CLI does not block, so it reports every failed rule
+      through the exit code. `--audit-warn` counts Audit failures as warnings instead.
+  correct_option: d
+  explanation: In a file-based run nothing is blocked. The exit code reports failures,
+    and Audit failures count as failures until you set `--audit-warn`.
+- id: ats010-final-q29
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Supply variable values with -s/--set or a Values file
+  source_readings:
+  - sections/section-060/module-01/course-02-variables-and-mutate-output.md
+  prompt: A policy uses `{{ allowedEnv }}` in a pattern. `kyverno apply` on a Pod
+    manifest reports an error for the rule and exits non-zero. A live admission request
+    would not have this problem for `request.object`. What is the fix for the CLI
+    run?
+  options:
+  - id: a
+    text: Add `--audit-warn` so that the error becomes a warning.
+    explanation: "`--audit-warn` only changes how Audit failures count. An error stays
+      an error."
+  - id: b
+    text: Give `allowedEnv` a value with `--set`, or with a `Values` file passed with
+      `--values-file` that names the policy and the rule.
+    explanation: Correct. The CLI has no admission request, so it needs a value for
+      every variable that is not `request.object`. A Values file lists values per
+      policy rule and per resource.
+  - id: c
+    text: Add `allowedEnv` as a label to the Pod manifest.
+    explanation: A label would not define the variable. The policy reads a variable
+      called allowedEnv.
+  - id: d
+    text: Run the command with `--policy-report`.
+    explanation: "`--policy-report` changes the output format. It does not supply
+      variables."
+  correct_option: b
+  explanation: Variables other than the resource come from `-s`/`--set` or from a
+    `Values` file (`cli.kyverno.io/v1alpha1`) passed with `--values-file`. Policy
+    and rule names in the file must match exactly.
+- id: ats010-final-q30
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Save the output of a mutate policy with -o
+  source_readings:
+  - sections/section-060/module-01/course-02-variables-and-mutate-output.md
+  prompt: You want the exact Pod that a mutate policy produces from `pod-good.yaml`,
+    saved as a file, without changing the input file. Which command does this?
+  options:
+  - id: a
+    text: "`kyverno apply policy.yaml --resource pod-good.yaml -o out/patched.yaml`"
+    explanation: Correct. `-o` writes the mutated resource to the path. The input
+      file stays unchanged.
+  - id: b
+    text: "`kyverno apply policy.yaml --resource pod-good.yaml --policy-report`"
+    explanation: "`--policy-report` prints a report of results. It does not save the
+      mutated resource."
+  - id: c
+    text: "`kyverno apply policy.yaml --cluster`"
+    explanation: "`--cluster` reads live resources and does not save a patched file."
+  - id: d
+    text: "`kyverno apply policy.yaml --resource pod-good.yaml --audit-warn`"
+    explanation: "`--audit-warn` changes the exit code for Audit failures only."
+  correct_option: a
+  explanation: The `-o` flag (`--output`) saves mutated resources. The CLI never edits
+    the source file.

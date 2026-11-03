@@ -1,44 +1,135 @@
-# Part 2 — Enforce vs Audit at Apply Time
+# Enforce vs Audit at Apply Time
 
-> Prerequisite: [Part 1 — Applying ClusterPolicy & Policy with kubectl](./course-01-applying-clusterpolicy-and-policy-with-kubectl.md). Next: [Module 2 — Applying Beyond Admission](../module-02/course.md).
+When a resource breaks a policy rule, Kyverno must decide what to do with it. One setting makes that decision. This part explains that setting, shows both outcomes on a real Pod, and then describes how teams roll a new policy out without breaking a busy cluster.
 
-## One field decides whether a violation blocks or just gets logged
+## One field decides: block or record
 
-`spec.validationFailureAction` (set at the policy level, and overridable per-rule) is the single field that decides what happens to a resource that fails a `validate` rule at admission time:
+`spec.validationFailureAction` decides what happens to a resource that fails a `validate` rule at admission time. Admission time is the moment the API server processes a create or update request.
 
 | Value | What happens to the failing resource |
 | --- | --- |
-| `Enforce` | The API server rejects the request outright. The `kubectl apply`/`kubectl run` that created it fails with an admission error naming the policy and the reason. |
-| `Audit` | The request is admitted normally — the resource is created — but the violation is recorded as a finding in a `PolicyReport` (namespaced) or `ClusterPolicyReport` (cluster-scoped). |
+| `Enforce` | The API server rejects the request. The `kubectl` command fails with an error that names the policy, the rule and the rule's message. The resource is not created. |
+| `Audit` | The API server admits the request and creates the resource. Kyverno records the violation as a result in a `PolicyReport` (namespaced resources) or a `ClusterPolicyReport` (cluster-scoped resources). |
 
-Both values only affect admission-time behavior for the resource being created or updated right now. Neither one reaches back and touches resources that already existed before the policy was applied — that is a different mechanism, covered in the next module.
+Kyverno 1.13 also lets you set the action inside a single rule, with `validate.failureAction`. This course uses the policy-level field, because it is the one that the labs check.
 
-> [!TIP]
-> **Try it — watch a violation get admitted and reported under Audit**
->
-> ```sh
-> kubectl apply -f require-team-label.yaml   # validationFailureAction: Audit
-> kubectl run no-team-pod --image=nginx:alpine -n payments
-> kubectl get pod no-team-pod -n payments      # exists — it was admitted
-> kubectl get policyreport -n payments         # shows the violation
-> ```
->
-> Now edit the file to `validationFailureAction: Enforce`, re-apply, and try creating a second non-compliant Pod. This time the API server rejects it.
+Both values only affect the request being processed right now. Neither value reaches back to resources that already exist. Admission checks `CREATE` and `UPDATE` requests, so a later change to an existing resource that breaks an `Enforce` rule can be rejected too.
 
-## Why teams ship new policies as Audit first
+## See both outcomes
 
-Turning on `Enforce` for a brand-new rule against a live, already-busy cluster is risky: if the rule's `match`/`pattern` is even slightly wrong, it can start rejecting perfectly legitimate workloads the moment it goes live — including, in a worst case, Kyverno's own control-plane Pods or a critical platform component. The standard rollout pattern is:
+Start with the `Audit` policy. Save this as `require-team-label.yaml`:
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-team-label
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-team-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - payments
+      validate:
+        message: "Every Pod must have a team label."
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+```
+
+<!-- astrona:playground:renew -->
+
+Apply it, then create a Pod without the label and look for the violation:
+
+```sh
+kubectl apply -f require-team-label.yaml
+kubectl run no-team-pod --image=nginx:alpine -n payments
+kubectl get pod no-team-pod -n payments
+kubectl get policyreport -n payments
+```
+
+The Pod exists, because `Audit` admitted it. The report lists `require-team-label` as a failing policy for it. Kyverno writes the report a few seconds after the admission, so run the last command again if the list is empty.
+
+Now change `validationFailureAction` to `Enforce` in the file and apply it again. Create a second Pod:
+
+```sh
+kubectl apply -f require-team-label.yaml
+kubectl run no-team-pod-2 --image=nginx:alpine -n payments
+kubectl get pod no-team-pod-2 -n payments
+```
+
+The `kubectl run` command fails and the error names `require-team-label`. The `kubectl get` command answers `NotFound`, because the API server never stored the Pod. The first Pod, `no-team-pod`, is still running. Switching to `Enforce` did not remove it.
+
+## Why teams ship a policy as Audit first
+
+A new rule on a busy cluster is risky. If the `match` or the `pattern` is slightly wrong, `Enforce` can reject legitimate workloads the moment the policy goes live. In the worst case it rejects a platform component the cluster needs to run.
+
+The usual rollout has four steps:
 
 1. Apply the policy with `validationFailureAction: Audit`.
-2. Let it run for a representative period (hours to days, depending on your traffic patterns) while watching `PolicyReport`/`ClusterPolicyReport` objects for unexpected violations.
-3. Fix the rule (or fix the workloads) until the reports look the way you expect.
-4. Flip `validationFailureAction` to `Enforce` and re-apply.
+2. Let it run for a representative period, from hours to days, and read the `PolicyReport` results for violations you did not expect.
+3. Fix the rule, or fix the workloads, until the reports match what you expect.
+4. Change the action to `Enforce` and apply the policy again.
 
-## Rolling out gradually with validationFailureActionOverrides
+The flip in step 4 is still all-or-nothing for the whole cluster, which is the next problem to solve.
 
-Flipping a policy straight from `Audit` to `Enforce` cluster-wide is still an all-or-nothing move. `spec.validationFailureActionOverrides` lets you set a different `validationFailureAction` per namespace (or per namespace label selector) inside the same policy — for example, `Enforce` in a namespace where you've already fixed every violation, while the rest of the cluster stays on `Audit` a little longer. This is the mechanism for a staged, namespace-by-namespace rollout without maintaining separate copies of the same policy.
+## Stage the rollout with validationFailureActionOverrides
 
-## Reference
+`spec.validationFailureActionOverrides` sets a different action for chosen namespaces inside the same policy. The top-level `validationFailureAction` is the default. Each override entry has an `action` and either a list of `namespaces` or a `namespaceSelector` that matches namespace labels.
 
-- `kubectl get policyreport -A` / `kubectl get clusterpolicyreport` — where Audit-mode (and background-scan) findings live.
-- `kubectl explain clusterpolicy.spec.validationFailureActionOverrides` — the live schema for scoped overrides.
+Save this as `require-team-label-staged.yaml`. It enforces in `payments` and keeps the default `Audit` for every other namespace the rule matches:
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-team-label
+spec:
+  validationFailureAction: Audit
+  validationFailureActionOverrides:
+    - action: Enforce
+      namespaces:
+        - payments
+  background: true
+  rules:
+    - name: check-team-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Every Pod must have a team label."
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+```
+
+Apply it. The rule matches Pods in every namespace now, but only `payments` blocks. A Pod in `platform-ns` without the label is admitted and reported. You move one namespace at a time to `Enforce` by adding it to the list, and you keep a single copy of the policy.
+
+```sh
+kubectl apply -f require-team-label-staged.yaml
+kubectl run staged-check --image=nginx:alpine -n platform-ns
+kubectl run staged-check --image=nginx:alpine -n payments
+```
+
+The first `run` succeeds. The second `run` is rejected. Delete the policy and the Pods you created when you are done: `kubectl delete clusterpolicy require-team-label`.
+
+Remember that a rule with no `namespaces` in its `match` also matches Pods in system namespaces such as `kube-system`. That is one more reason to start in `Audit`.
+
+You can now choose between blocking and recording and stage the change by namespace. What remains is proving what a policy did, which means reading status, reports and events.
+
+## Common pitfalls
+
+> [!WARNING]
+> - Moving a new policy straight to `Enforce` on a live cluster. Start with `Audit` and read the reports.
+> - Expecting `Enforce` to remove violators that already exist. It only changes how new create and update requests are handled.
+> - Forgetting that the override list replaces the default for the named namespaces only. A namespace that is not listed uses the top-level value.

@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: allow-migration-job
+  namespace: checkout-live
+spec:
+  exceptions:
+    - policyName: checkout-require-limits
+      ruleNames:
+        - check-limits-checkout
+        - autogen-check-limits-checkout
+        - autogen-cronjob-check-limits-checkout
+  match:
+    any:
+      - resources:
+          kinds:
+            - Pod
+            - Job
+          names:
+            - "migration-job*"

@@ -1,13 +1,26 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Namespace & Kind Scoped Policy (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
   name: "ats-010-lab-004"
   docs:
-    solution: "solution.md"
-    question: "question.md"
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2 and the namespaces shop-prod (env=prod) and
+# shop-dev (env=dev). No policy.
 bootstrap:
   init:
     - name: "install-kyverno"
-      description: "Installs Kyverno onto the kind cluster"
+      description: "Installs Kyverno v1.13.2 onto the kind cluster"
       type: "file"
       source: "bootstrap/01-install-kyverno.sh"
     - name: "lab-004-setup"
@@ -15,9 +28,45 @@ bootstrap:
       type: "file"
       source: "bootstrap/02-seed-namespaces.sh"
 
+# Applied only by `astrona test`: the reference solution and the exercise objects.
+testing:
+  init:
+    - name: "apply-solution"
+      description: "Apply the reference ClusterPolicy"
+      type: "file"
+      source: "solution/apply.sh"
+    - name: "create-exercise-objects"
+      description: "Wait for enforcement, then create the Ingresses from the question"
+      type: "file"
+      source: "testing/create-exercise-objects.sh"
+
 validation:
   scripts:
-    - name: "verify-require-reviewed-public-ingress"
-      description: "Confirms the policy exists, blocks an unreviewed public Ingress in shop-prod, and admits everything out of its scope"
+    - name: "policy-defined"
+      description: "The ClusterPolicy exists, is Enforce, and uses kind Ingress, a public-* name pattern and a namespaceSelector"
       type: "file"
-      source: "validation/validate-completed.sh"
+      source: "validation/validate-policy-defined.sh"
+      hint: "Create a ClusterPolicy named require-reviewed-public-ingress with validationFailureAction: Enforce. Put kinds, names and namespaceSelector together in ONE resources block under match.any."
+    - name: "public-blocked-in-prod"
+      description: "An unannotated public-* Ingress in shop-prod is rejected"
+      type: "file"
+      source: "validation/validate-public-blocked-in-prod.sh"
+      hint: "The validate pattern should require metadata.annotations.security-reviewed with the value \"?*\" (any non-empty string). Kyverno needs a few seconds after apply; try again."
+    - name: "out-of-scope-admitted"
+      description: "internal-* in shop-prod and public-* in shop-dev are admitted"
+      type: "file"
+      source: "validation/validate-out-of-scope-admitted.sh"
+      hint: "If these are rejected your scope is too wide. names must be public-* (not *), and the namespaceSelector must be env: prod."
+    - name: "namespace-selector-is-dynamic"
+      description: "A newly labeled env=prod namespace is covered without editing the policy"
+      type: "file"
+      source: "validation/validate-namespace-selector-is-dynamic.sh"
+      hint: "Do not list shop-prod under resources.namespaces. Select namespaces by label with namespaceSelector.matchLabels: {env: prod}."
+    - name: "reviewed-and-objects"
+      description: "A reviewed public Ingress is admitted and the Ingresses from the exercise exist"
+      type: "file"
+      source: "validation/validate-reviewed-and-objects.sh"
+      hint: "Create internal-shop and public-reviewed (with security-reviewed: \"true\") in shop-prod and public-shop in shop-dev. public-shop must NOT exist in shop-prod."
+
+teardown:
+  keepCluster: false

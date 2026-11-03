@@ -1,0 +1,78 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Policy Types Capstone: Onboard A Namespace (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-012
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno 1.13.2 is installed. The namespace `shipyard` carries
+# the label onboarding=true and holds shipyard-notes and shipyard-old
+# (ttl-expired=true). No policy and no extra Kyverno RBAC.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-shipyard
+      description: Create the labelled shipyard namespace and its ConfigMaps
+      type: file
+      source: bootstrap/02-seed-shipyard.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference ClusterRoles and policies
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-controllers
+      description: Wait until the RBAC is aggregated and the policies are ready
+      type: file
+      source: testing/wait-for-controllers.sh
+
+validation:
+  scripts:
+    - name: policies-ready
+      description: The three ClusterPolicies are Ready and the cleanup policy exists
+      type: file
+      source: validation/validate-policies-ready.sh
+      hint: Create onboard-namespace, workload-defaults and workload-guardrails as ClusterPolicies and expire-shipyard-configmaps as a ClusterCleanupPolicy.
+    - name: controller-rbac
+      description: The background controller can create NetworkPolicies and ResourceQuotas and the cleanup controller can delete ConfigMaps
+      type: file
+      source: validation/validate-controller-rbac.sh
+      hint: Add ClusterRoles with the labels rbac.kyverno.io/aggregate-to-background-controller and rbac.kyverno.io/aggregate-to-cleanup-controller set to "true". Check with kubectl auth can-i --as.
+    - name: onboarding-generate
+      description: A new onboarding namespace gets a synchronized quota and a default-deny NetworkPolicy
+      type: file
+      source: validation/validate-onboarding-generate.sh
+      hint: Two generate rules on Namespace with selector onboarding=true, data for both, synchronize true. The quota is team-quota with pods 15.
+    - name: pod-mutation
+      description: Pods in onboarding namespaces get a default cost-center label and others are untouched
+      type: file
+      source: validation/validate-pod-mutation.sh
+      hint: Use mutate.patchStrategicMerge with +(cost-center) set to shared, and match Pod with a namespaceSelector for onboarding=true.
+    - name: pod-guardrails
+      description: Pods need a cost-center label, host network is rejected, and mutation runs first
+      type: file
+      source: validation/validate-pod-guardrails.sh
+      hint: workload-guardrails is Enforce with a pattern for metadata.labels.cost-center "?*" and a second rule with spec =(hostNetwork) "false".
+    - name: expire-cleanup
+      description: The cleanup policy deletes ConfigMaps in shipyard labelled ttl-expired=true
+      type: file
+      source: validation/validate-expire-cleanup.sh
+      hint: Match ConfigMap in namespace shipyard, condition on target.metadata.labels."ttl-expired" with a default, schedule "* * * * *".
+
+teardown:
+  keepCluster: false

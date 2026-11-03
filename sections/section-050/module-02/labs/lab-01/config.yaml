@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Use Reports as a Rollout Gate (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-014
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2, namespace rollout-lab with ok-1 (compliant) and bad-1, bad-2, bad-3 (violate), policy require-owner-label in Audit.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-cluster
+      description: Seed the resources and Audit policies, then wait for the first reports
+      type: file
+      source: bootstrap/02-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: testing/apply-solution.sh
+
+validation:
+  scripts:
+    - name: violators-remediated
+      description: "bad-1 and bad-2 fixed, bad-3 deleted"
+      type: file
+      source: validation/validate-violators-remediated.sh
+      hint: "Add an owner label to bad-1 and bad-2, and delete bad-3. Leave ok-1 alone."
+    - name: reports-clean
+      description: "Reports show zero fail results and three pass results"
+      type: file
+      source: validation/validate-reports-clean.sh
+      hint: "Reports lag behind changes. Re-read them until fail is gone and bad-3 has no result; do not flip the policy before then."
+    - name: policy-enforce
+      description: "require-owner-label is Enforce"
+      type: file
+      source: validation/validate-policy-enforce.sh
+      hint: "Patch spec.validationFailureAction to Enforce on the ClusterPolicy."
+    - name: enforcement-works
+      description: "A violator is rejected and a compliant ConfigMap is admitted"
+      type: file
+      source: validation/validate-enforcement-works.sh
+      hint: "Test with kubectl create --dry-run=server in rollout-lab. The rule matches ConfigMaps labelled app=fleet."
+    - name: gate-record
+      description: "gate-record holds violators-found=3 and fail-at-flip=0"
+      type: file
+      source: validation/validate-gate-record.sh
+      hint: "Create the ConfigMap gate-record in rollout-lab with the two keys; violators-found is the number of fail results you saw first."
+
+teardown:
+  keepCluster: false

@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-frontend-images
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: check-frontend-image-registry
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            namespaces:
+              - apps-ns
+            selector:
+              matchLabels:
+                tier: frontend
+            operations:
+              - CREATE
+      exclude:
+        any:
+        - subjects:
+            - kind: ServiceAccount
+              name: ci-deployer
+              namespace: apps-ns
+      validate:
+        message: "Frontend Pod containers must use an image from registry.internal/*."
+        pattern:
+          spec:
+            containers:
+              - image: "registry.internal/*"

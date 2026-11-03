@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Policy Reports and Results Capstone (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-015
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2, namespaces fleet-a and fleet-b with five ConfigMaps (three violate), fleet-b has no team label, two Audit policies.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-cluster
+      description: Seed the resources and Audit policies, then wait for the first reports
+      type: file
+      source: bootstrap/02-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: testing/apply-solution.sh
+
+validation:
+  scripts:
+    - name: findings-recorded
+      description: "capstone-findings lists the violators as namespace/name"
+      type: file
+      source: validation/validate-findings-recorded.sh
+      hint: "Read the PolicyReports of fleet-a and fleet-b and the ClusterPolicyReport before changing anything. Format: fleet-a/a-bad,fleet-b/b-bad,..."
+    - name: violators-remediated
+      description: "Violators fixed or deleted and fleet-b labelled"
+      type: file
+      source: validation/validate-violators-remediated.sh
+      hint: "Label the two ConfigMaps with owner, delete the stale one, label the namespace fleet-b with team."
+    - name: reports-clean
+      description: "Both report kinds show zero fail and the expected passes"
+      type: file
+      source: validation/validate-reports-clean.sh
+      hint: "Wait for the reports to catch up. Zero fail is not enough; the passes must be there too."
+    - name: policies-enforce
+      description: "Both policies are Enforce"
+      type: file
+      source: validation/validate-policies-enforce.sh
+      hint: "Patch validationFailureAction on both ClusterPolicies."
+    - name: enforcement-works
+      description: "Violators are rejected, compliant objects admitted"
+      type: file
+      source: validation/validate-enforcement-works.sh
+      hint: "Use kubectl create --dry-run=server for a ConfigMap in fleet-a and a Namespace carrying demo=reports."
+
+teardown:
+  keepCluster: false

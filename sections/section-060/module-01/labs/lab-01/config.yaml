@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Prove Policies Offline With kyverno apply (LAB). Graded by running the
+# kyverno CLI on the learner's files in $HOME/kyverno-lab/m1 and by checking
+# the cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: "ats-010-lab-016"
+  docs:
+    prerequisites: "prerequisites.md"
+    question: "question.md"
+    solution: "solution.md"
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2 in the cluster, the Kyverno CLI v1.13.2 on
+# PATH, five Pod manifests in $HOME/kyverno-lab/m1/resources, and a Pod named
+# legacy (no team label) in the namespace lab.
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Install Kyverno v1.13.2 into the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "install-kyverno-cli"
+      description: "Download and install the Kyverno CLI v1.13.2"
+      type: "file"
+      source: "bootstrap/02-install-kyverno-cli.sh"
+    - name: "seed-working-directory"
+      description: "Create $HOME/kyverno-lab/m1 with Pod manifests and the namespace lab"
+      type: "file"
+      source: "bootstrap/03-seed-working-directory.sh"
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: "apply-solution"
+      description: "Write the reference policies and apply require-team-label"
+      type: "file"
+      source: "solution/apply.sh"
+
+validation:
+  scripts:
+    - name: "policy-files"
+      description: "The four policy files exist with the required names and actions"
+      type: "file"
+      source: "validation/validate-policy-files.sh"
+      hint: "Put require-team-label.yaml, disallow-latest-tag.yaml, add-managed-by-label.yaml and require-env-label.yaml in $HOME/kyverno-lab/m1/policies. Each is a ClusterPolicy; the rule names are in the task."
+    - name: "enforce-exit-codes"
+      description: "kyverno apply passes web-good and fails web-nolabel"
+      type: "file"
+      source: "validation/validate-enforce-exit-codes.sh"
+      hint: "Use a validate rule with pattern metadata.labels.team: \"?*\" and a match that lists kind Pod and namespace lab. The resource files already carry namespace: lab."
+    - name: "audit-warn"
+      description: "An Audit failure exits non-zero unless --audit-warn is set"
+      type: "file"
+      source: "validation/validate-audit-warn.sh"
+      hint: "disallow-latest-tag needs validationFailureAction: Audit and the pattern spec.containers[].image: \"!*:latest\". Run it with and without --audit-warn."
+    - name: "variables-values-file"
+      description: "require-env-label reads allowedEnv from a values file"
+      type: "file"
+      source: "validation/validate-variables-values-file.sh"
+      hint: "Use the variable {{ allowedEnv }} in the policy and a file of kind Values with policies[].rules[].values.allowedEnv set to prod. Pass it with --values-file."
+    - name: "mutate-output"
+      description: "The mutate policy output is saved with -o"
+      type: "file"
+      source: "validation/validate-mutate-output.sh"
+      hint: "Run kyverno apply policies/add-managed-by-label.yaml --resource resources/pod-good.yaml -o out/patched.yaml. The mutate rule uses patchStrategicMerge."
+    - name: "cluster-scan"
+      description: "kyverno apply --cluster finds the existing Pod legacy"
+      type: "file"
+      source: "validation/validate-cluster-scan.sh"
+      hint: "Run kyverno apply policies/require-team-label.yaml --cluster. It reads the Pods from the cluster in your current kubectl context."
+    - name: "policy-live"
+      description: "require-team-label is applied to the cluster and rejects web-nolabel"
+      type: "file"
+      source: "validation/validate-policy-live.sh"
+      hint: "After the CLI results are right, run kubectl apply -f policies/require-team-label.yaml and wait until the policy is Ready."
+
+teardown:
+  keepCluster: false

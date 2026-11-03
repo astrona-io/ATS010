@@ -1,9 +1,24 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Common Policy Settings Integration (CAPSTONE LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
   name: "ats-010-lab-009"
   docs:
+    prerequisites: prerequisites.md
     solution: "solution.md"
     question: "question.md"
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# Starting state: Kyverno v1.13.2, an extra ClusterRole for the background
+# controller, ops-prod, and ops-legacy with a pre-existing legacy-svc Deployment.
 bootstrap:
   init:
     - name: "install-kyverno"
@@ -11,13 +26,35 @@ bootstrap:
       type: "file"
       source: "bootstrap/01-install-kyverno.sh"
     - name: "capstone-030-setup"
-      description: "Creates the ops-prod namespace, plus the pre-existing ops-legacy namespace and its legacy-svc Deployment"
+      description: "Lets the background controller manage ConfigMaps and creates ops-prod plus the pre-existing ops-legacy namespace and its legacy-svc Deployment"
       type: "file"
       source: "bootstrap/02-seed-environment.sh"
 
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+
 validation:
   scripts:
-    - name: "verify-section-030-capstone"
-      description: "Confirms failurePolicy/webhookTimeoutSeconds enforcement, generateExisting backfill into ops-legacy, and applyRules: One tier labeling all behave as required"
+    - name: "limits-policy-enforces"
+      description: "ops-require-limits has Fail, 8 seconds, Enforce and background true; it rejects a Pod without limits; has-limits-pod was admitted"
       type: "file"
-      source: "validation/validate-completed.sh"
+      source: "validation/validate-limits-policy-enforces.sh"
+      hint: "Put failurePolicy: Fail, webhookTimeoutSeconds: 8, background: true and validationFailureAction: Enforce under spec; the pattern needs resources.limits.cpu and memory set to \"?*\"."
+    - name: "audit-configmap-backfill"
+      description: "audit-config exists in ops-prod and in the pre-existing ops-legacy namespace, not in system namespaces"
+      type: "file"
+      source: "validation/validate-audit-configmap-backfill.sh"
+      hint: "Set generateExisting: true, exclude the system namespaces, and give the background controller a few seconds. ops-legacy existed before the policy."
+    - name: "tier-cost-labels"
+      description: "tier-cost-labels uses applyRules One with the gold rule first, and ops-prod (tier=gold) has cost-center premium"
+      type: "file"
+      source: "validation/validate-tier-cost-labels.sh"
+      hint: "List gold-tier-override before standard-tier-default, apply the policy, then label ops-prod with tier=gold."
+
+teardown:
+  keepCluster: false

@@ -1,0 +1,254 @@
+# Knowledge check for section 020. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-020
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-020
+  title: "Resource Selection"
+questions:
+  - id: ats010-020-q01
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Match subresource requests such as Pod/exec and set the CONNECT operation"
+    source_readings:
+      - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+      - sections/section-020/module-02/course-01-selector-and-operations.md
+    prompt: |-
+      A security team writes a rule with `kinds: [Pod]` and a `deny` that should block `kubectl exec` into production Pods. The rule applies cleanly, but `kubectl exec` still works. What is the most direct fix?
+    options:
+      - id: a
+        text: "Change `validationFailureAction` from `Audit` to `Enforce` only; the match block is already correct."
+        explanation: "The action matters for blocking, but it does not change which requests the rule sees. A bare `Pod` never selects `exec` requests."
+      - id: b
+        text: "Add `exec` to the namespace list so the rule covers the exec namespace."
+        explanation: "`exec` is a subresource, not a namespace."
+      - id: c
+        text: "Match the subresource with `kinds: [Pod/exec]` and set `operations: [CONNECT]`."
+        explanation: "Correct. `kubectl exec` is a `CONNECT` request to the `pods/exec` subresource. A `Pod` entry matches the Pod object itself, so the rule must name `Pod/exec`."
+      - id: d
+        text: "Use the wildcard `names: [\"*\"]` so every Pod name is matched."
+        explanation: "A name wildcard narrows or widens by name; it does not make the rule see a different kind of request."
+    correct_option: c
+    explanation: "`kubectl exec` is a `CONNECT` request to the `pods/exec` subresource. A bare `Pod` kind matches the Pod object only, so the rule needs `Pod/exec` and `operations: [CONNECT]`."
+
+  - id: ats010-020-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain that name wildcards compare metadata.name only and are not a security boundary"
+    source_readings:
+      - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+    prompt: |-
+      A rule is scoped with `kinds: [ConfigMap]` and `names: ["*-secrets"]` to protect sensitive data. A developer stores a database password in a ConfigMap named `db-password`. What happens?
+    options:
+      - id: a
+        text: "The rule catches it, because Kyverno scans ConfigMap values for sensitive words."
+        explanation: "Kyverno does not inspect content to decide whether a name filter matches."
+      - id: b
+        text: "The rule does not evaluate it at all, because `names` compares only `metadata.name` and `db-password` does not end in `-secrets`."
+        explanation: "Correct. A name pattern is a naming convention, not a statement about what the object contains, so anything created under a different name is out of scope."
+      - id: c
+        text: "The rule catches it, because `*-secrets` is a regular expression matching sensitive-sounding names."
+        explanation: "Kyverno wildcards are simple globs (`*` and `?`), not regular expressions."
+      - id: d
+        text: "Kyverno renames the ConfigMap to end in `-secrets` before evaluating it."
+        explanation: "Kyverno never renames an object to make it match."
+    correct_option: b
+    explanation: "`names` compares only `metadata.name`. A password in `db-password` is out of scope, which is why a name pattern is a convention and not a security boundary."
+
+  - id: ats010-020-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict which names a pattern using * and ? matches"
+    source_readings:
+      - sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
+    prompt: |-
+      A rule uses `names: ["web-?", "api-*"]`. Which set of ConfigMap names contains ONLY names that the rule selects?
+    options:
+      - id: a
+        text: "`web-10`, `api-v1`, `my-api-v1`"
+        explanation: "`web-10` has two characters after `web-` and `?` is exactly one; `my-api-v1` does not start with `api-`."
+      - id: b
+        text: "`web-`, `web-1`, `api`"
+        explanation: "`web-` has no character for `?` to match, and `api` lacks the `-` that the pattern requires."
+      - id: c
+        text: "`web-ab`, `api-`, `web-1`"
+        explanation: "`web-ab` has two characters after `web-`, so `?` does not match it."
+      - id: d
+        text: "`web-1`, `api-`, `api-gateway`"
+        explanation: "Correct. `?` matches exactly one character (`web-1`) and `*` matches zero or more (`api-`, `api-gateway`)."
+    correct_option: d
+    explanation: "`?` matches exactly one character and `*` matches zero or more. `web-1`, `api-` and `api-gateway` all match; the other sets each contain a name that does not."
+
+  - id: ats010-020-q04
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain why a static namespaces list does not follow new namespaces"
+    source_readings:
+      - sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
+    prompt: |-
+      A policy lists `namespaces: [shop-prod]`. Next month a team creates `shop-prod-eu` and expects the same guardrail. Is it covered?
+    options:
+      - id: a
+        text: "No. The list is static; `shop-prod-eu` is a different string and must be added, or the entry rewritten with a wildcard such as `shop-prod*`."
+        explanation: "Correct. `namespaces` names namespaces literally, with optional wildcards you write yourself."
+      - id: b
+        text: "Yes, because `namespaces` entries are prefix matches by default."
+        explanation: "Entries match whole names unless you add a wildcard."
+      - id: c
+        text: "Yes, because Kyverno treats namespaces that share a prefix as the same environment."
+        explanation: "Kyverno has no notion of related namespaces."
+      - id: d
+        text: "No, and it can only be covered by deleting and recreating the policy."
+        explanation: "Editing the policy is enough; no recreation is needed."
+    correct_option: a
+    explanation: "The `namespaces` list is static and compares whole names. Add the new namespace, use a wildcard, or switch to a label-driven `namespaceSelector`."
+
+  - id: ats010-020-q05
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict the effect of relabeling a namespace on a namespaceSelector policy"
+    source_readings:
+      - sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
+    prompt: |-
+      A rule uses `namespaceSelector: {matchLabels: {env: prod}}`. An engineer runs `kubectl label namespace shop-dev env=prod --overwrite` for an unrelated reason. What is the effect on the policy?
+    options:
+      - id: a
+        text: "None. `namespaceSelector` is evaluated once, when the policy is applied."
+        explanation: "It is evaluated against live namespace labels on each admission request."
+      - id: b
+        text: "Kyverno rejects the `kubectl label` command because it would change an existing policy's scope."
+        explanation: "Kyverno does not block label changes just because a policy reads the label (unless you write a rule for that)."
+      - id: c
+        text: "Resources created in `shop-dev` from now on are in scope of the rule, with no policy edit."
+        explanation: "Correct. The scope follows the live labels on the Namespace object, which is both the strength and the risk of `namespaceSelector`."
+      - id: d
+        text: "The rule stops applying to `shop-dev`."
+        explanation: "The label now matches, so the namespace moves into scope, not out of it."
+    correct_option: c
+    explanation: "`namespaceSelector` reads the live labels on the Namespace. Relabeling `shop-dev` to `env=prod` brings new admission requests there into scope without any policy change."
+
+  - id: ats010-020-q06
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Predict what an exclude block selects when several fields share one resources entry"
+    source_readings:
+      - sections/section-020/module-01/course-03-annotations-exclude-precedence-and-policy-scope.md
+    prompt: |-
+      A rule matches every Ingress in env=prod namespaces. Its exclude is a single `resources` entry with `namespaces: [shop-legacy]` and `names: ["public-*"]`. An Ingress named `internal-api` in `shop-legacy` is created. What happens?
+    options:
+      - id: a
+        text: "It is excluded, because it is in `shop-legacy`."
+        explanation: "Fields in one resources entry are ANDed; the name does not match `public-*`."
+      - id: b
+        text: "It is not excluded and the rule runs on it, because the exclude needs the namespace AND the name pattern to match."
+        explanation: "Correct. Only Ingresses that are in `shop-legacy` and named `public-*` are excluded. To exclude both sets separately, use two entries under `exclude.any`."
+      - id: c
+        text: "It is excluded, because `any` is implied and either field is enough."
+        explanation: "OR requires separate entries under `any`; fields inside one entry are always ANDed."
+      - id: d
+        text: "The policy is rejected at apply time because an exclude cannot combine two fields."
+        explanation: "Combining fields in an exclude entry is valid; it simply ANDs them."
+    correct_option: b
+    explanation: "Inside one resources entry every field is ANDed, in exclude as in match. `internal-api` fails the name pattern, so it is not excluded. Use two entries under `exclude.any` for an OR."
+
+  - id: ats010-020-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Distinguish selector (labels on the resource) from namespaceSelector (labels on the Namespace)"
+    source_readings:
+      - sections/section-020/module-02/course-01-selector-and-operations.md
+      - sections/section-020/module-02/course-03-debugging-why-a-rule-did-or-did-not-match.md
+    prompt: |-
+      A rule should apply to Pods labeled `tier: frontend`. The author writes `namespaceSelector: {matchLabels: {tier: frontend}}`. The Pods carry the label but the namespace does not, and the rule never fires. Which change fixes it?
+    options:
+      - id: a
+        text: "Use `selector: {matchLabels: {tier: frontend}}`, which reads the labels on the Pod itself."
+        explanation: "Correct. `namespaceSelector` reads labels on the Namespace object; `selector` reads labels on the matched resource."
+      - id: b
+        text: "Use `objectSelector` under `resources`, which is the Kyverno field for Pod labels."
+        explanation: "`objectSelector` is a webhook-configuration field, not a Kyverno match field."
+      - id: c
+        text: "Add the label to the Namespace and keep the rule as it is, because Pod labels are always inherited from the Namespace."
+        explanation: "Labels are not inherited from a Namespace. That change would hide the bug and select every Pod in the namespace."
+      - id: d
+        text: "Set `background: false` so Kyverno reads the Pod labels at admission."
+        explanation: "`background` has nothing to do with which object's labels a selector reads."
+    correct_option: a
+    explanation: "`namespaceSelector` reads the Namespace's labels; `selector` reads the matched resource's own labels. Swapping them is the most common cause of a rule that never fires."
+
+  - id: ats010-020-q08
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Explain the gap left by an operations list that contains only CREATE"
+    source_readings:
+      - sections/section-020/module-02/course-01-selector-and-operations.md
+    prompt: |-
+      A rule requires `registry.internal/*` images on frontend Pods and sets `operations: [CREATE]`. A developer creates a compliant Pod, then runs `kubectl set image` to switch it to `nginx`. What happens, and what is the remedy?
+    options:
+      - id: a
+        text: "The change is rejected, because Kyverno re-checks every object periodically."
+        explanation: "Admission policies evaluate requests; a CREATE-only rule is not invoked on the update."
+      - id: b
+        text: "The change is rejected, because `kubectl set image` is a CREATE of a new Pod."
+        explanation: "It is a patch of an existing object, which is an UPDATE."
+      - id: c
+        text: "The change is admitted and the remedy is to set `validationFailureAction: Enforce`."
+        explanation: "The action decides blocking vs reporting. The rule is still not evaluated for an UPDATE."
+      - id: d
+        text: "The change is admitted because the rule never sees UPDATE; add `UPDATE` to `operations` so the guardrail holds for the Pod's whole life."
+        explanation: "Correct. Editing the image is an `UPDATE`, which a `[CREATE]`-only rule does not evaluate."
+    correct_option: d
+    explanation: "`kubectl set image` sends an UPDATE. A rule limited to `[CREATE]` never evaluates it, so include `UPDATE` when the guardrail must hold after creation."
+
+  - id: ats010-020-q09
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Predict the selection when resources and subjects appear as separate any entries"
+    source_readings:
+      - sections/section-020/module-02/course-02-subjects-roles-clusterroles-and-any-all.md
+    prompt: |-
+      A rule's match is `any: [ {resources: {kinds: [Pod]}}, {subjects: [{kind: ServiceAccount, name: ci-deployer, namespace: apps-ns}]} ]`. The author meant "Pods created by ci-deployer". What does it select?
+    options:
+      - id: a
+        text: "Only Pods created by `ci-deployer`."
+        explanation: "That would need both conditions in one filter, or `all`."
+      - id: b
+        text: "Nothing, because `any` needs at least three entries."
+        explanation: "`any` accepts one or more entries."
+      - id: c
+        text: "Every Pod from anyone, and every resource that `ci-deployer` touches, because the two entries are ORed."
+        explanation: "Correct. Separate entries under `any` are alternatives. Put `resources` and `subjects` in one entry, or use `all`, to AND them."
+      - id: d
+        text: "Only resources that are not Pods, because the entries cancel each other out."
+        explanation: "Entries under `any` never cancel; they widen the selection."
+    correct_option: c
+    explanation: "`any` ORs its entries, so the rule selects every Pod and every request from `ci-deployer`. To mean \"Pods created by ci-deployer\" use one filter holding both fields, or `all`."
+
+  - id: ats010-020-q10
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain why identity-based selection requires background: false"
+    source_readings:
+      - sections/section-020/module-02/course-02-subjects-roles-clusterroles-and-any-all.md
+    prompt: |-
+      A platform team excludes the `ci-deployer` ServiceAccount with `exclude.any.subjects`. Which setting belongs with that policy, and why?
+    options:
+      - id: a
+        text: "`background: true`, so existing Pods created by `ci-deployer` are also rescanned."
+        explanation: "Stored objects carry no record of who requested them, so there is no requester to compare."
+      - id: b
+        text: "`background: false`, because subjects, roles and clusterRoles only exist on admission requests and not on background scans of stored objects."
+        explanation: "Correct. Identity is a property of the admission request."
+      - id: c
+        text: "`validationFailureAction: Audit`, because subject excludes only work in audit mode."
+        explanation: "Subject excludes work in Enforce and Audit."
+      - id: d
+        text: "No special setting; Kyverno copies the requester onto every stored object during scans."
+        explanation: "Kyverno does not store requester identity on objects."
+    correct_option: b
+    explanation: "A background scan sees stored objects, which have no requester. Policies that select or exclude by `subjects`, `roles` or `clusterRoles` therefore set `background: false`."

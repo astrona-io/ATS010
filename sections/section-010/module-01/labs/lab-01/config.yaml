@@ -1,23 +1,69 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Enforce-Mode Resource Limits Policy (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
-  name: "ats-010-lab-001"
+  name: ats-010-lab-001
   docs:
-    solution: "solution.md"
-    question: "question.md"
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# Starting state: Kyverno v1.13.2 with its webhooks ready and an empty
+# namespace `platform-ns`. No policy exists. The learner writes it.
 bootstrap:
   init:
-    - name: "install-kyverno"
-      description: "Installs Kyverno onto the kind cluster"
-      type: "file"
-      source: "bootstrap/01-install-kyverno.sh"
-    - name: "lab-001-setup"
-      description: "Creates the platform-ns namespace for the lab"
-      type: "file"
-      source: "bootstrap/02-create-namespace.sh"
+    - name: install-kyverno
+      description: "Install Kyverno v1.13.2 and wait for its controllers and webhooks"
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: lab-001-setup
+      description: "Create the platform-ns namespace"
+      type: file
+      source: bootstrap/02-create-namespace.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-policy
+      description: Wait until Kyverno enforces the policy
+      type: file
+      source: testing/wait-for-policy.sh
 
 validation:
   scripts:
-    - name: "verify-require-resource-limits-rollout"
-      description: "Confirms the policy ends in Enforce, admitted the Audit-era Pod, blocked the post-Enforce violator, and admitted the compliant Pod"
-      type: "file"
-      source: "validation/validate-completed.sh"
+    - name: policy-ready-and-enforce
+      description: The ClusterPolicy require-resource-limits exists, is Ready, matches platform-ns and ends in Enforce
+      type: file
+      source: validation/validate-policy-ready-and-enforce.sh
+      hint: Name the policy require-resource-limits, match kind Pod in platform-ns, and set validationFailureAction to Enforce in the final state. Check kubectl get clusterpolicy for READY true.
+    - name: audit-era-pod-reported
+      description: no-limits-pod was admitted under Audit and appears as a failing result in a PolicyReport
+      type: file
+      source: validation/validate-audit-era-pod-reported.sh
+      hint: Create no-limits-pod while the policy is still in Audit, then look at kubectl get polr -n platform-ns -o yaml. A report appears a few seconds after the admission.
+    - name: enforce-blocks-violator
+      description: A Pod without limits is rejected in platform-ns and no-limits-pod-2 does not exist
+      type: file
+      source: validation/validate-enforce-blocks-violator.sh
+      hint: Re-apply the policy with validationFailureAction Enforce, then run kubectl run no-limits-pod-2. The command must fail.
+    - name: compliant-pod-admitted
+      description: has-limits-pod exists with both cpu and memory limits and a compliant Pod is still accepted
+      type: file
+      source: validation/validate-compliant-pod-admitted.sh
+      hint: Create has-limits-pod in platform-ns with limits.cpu and limits.memory on its container. kubectl run needs --overrides for resources.
+
+teardown:
+  keepCluster: false

@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: reporting-audit-limits
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-limits-reporting
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - reporting-live
+      validate:
+        message: "Every container must set resources.limits.cpu and resources.limits.memory."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"

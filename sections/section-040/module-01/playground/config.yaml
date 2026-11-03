@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Applying Validate And Mutate Policies (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno 1.13.2 and creates two
+# namespaces, then stays running for free exploration. No task, no grading, no
+# `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-040-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# What the learner starts with: Kyverno 1.13.2 with its controllers ready, the
+# namespaces `starfleet` and `outpost`, and a ConfigMap `crew-notes` in
+# `starfleet`. No ClusterPolicy.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno 1.13.2 from its release manifest, wait for its webhooks, then create the sandbox namespaces"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

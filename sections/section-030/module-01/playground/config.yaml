@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Policy-Level Settings (PLAYGROUND) - playground environment. A clean sandbox:
+# it starts, installs Kyverno v1.13.2, creates three empty namespaces, then
+# stays running for free exploration. No task, no grading, no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-030-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# What the learner starts with: Kyverno v1.13.2 with all four controllers
+# ready, and the empty namespaces critical-ns, lenient-ns and sandbox. No
+# ClusterPolicy exists.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its four controllers, create the sandbox namespaces"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

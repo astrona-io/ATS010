@@ -1,0 +1,78 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Apply Mutate And Validate Policies (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-lab-010
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno 1.13.2 is installed, the namespace `starfleet` exists
+# with a protected ConfigMap (fleet-registry) and a plain one (scratch-notes).
+# No policy exists.
+bootstrap:
+  init:
+    - name: install-kyverno
+      description: Install Kyverno v1.13.2 and wait for its controllers and webhooks
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: seed-starfleet
+      description: Create the starfleet namespace and the two ConfigMaps
+      type: file
+      source: bootstrap/02-seed-starfleet.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference policies
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-policies
+      description: Wait until the policies are ready and the webhooks use them
+      type: file
+      source: testing/wait-for-policies.sh
+
+validation:
+  scripts:
+    - name: policies-ready
+      description: The three ClusterPolicies exist and are Ready
+      type: file
+      source: validation/validate-policies-ready.sh
+      hint: Create the ClusterPolicies pod-defaults, require-pod-standards and protect-registry, then run kubectl get clusterpolicy until READY is True.
+    - name: mutate-defaults
+      description: A merge patch adds a default team label and allowPrivilegeEscalation without overwriting the author's values
+      type: file
+      source: validation/validate-mutate-defaults.sh
+      hint: Use mutate.patchStrategicMerge with the +(team) anchor under metadata.labels and (name) "*" with +(allowPrivilegeEscalation) under spec.containers.
+    - name: json6902-automount
+      description: A JSON patch sets automountServiceAccountToken to false
+      type: file
+      source: validation/validate-json6902-automount.sh
+      hint: Add a second rule to pod-defaults with mutate.patchesJson6902 holding an add operation on /spec/automountServiceAccountToken with value false.
+    - name: mutate-before-validate
+      description: A pod without a team label is admitted because mutation runs before validation
+      type: file
+      source: validation/validate-mutate-before-validate.sh
+      hint: require-pod-standards must be Enforce with a pattern that needs metadata.labels.team set to "?*". The mutate rule adds the label first.
+    - name: reject-latest-image
+      description: Pods that use the latest tag are rejected, pinned tags are admitted
+      type: file
+      source: validation/validate-reject-latest-image.sh
+      hint: Add a second rule to require-pod-standards with pattern spec.containers image "!*:latest".
+    - name: deny-delete-protected
+      description: A deny rule blocks deleting ConfigMaps labelled protected=true
+      type: file
+      source: validation/validate-deny-delete-protected.sh
+      hint: Match ConfigMap with operations DELETE, set background to false, and deny when request.oldObject.metadata.labels.protected equals "true".
+
+teardown:
+  keepCluster: false

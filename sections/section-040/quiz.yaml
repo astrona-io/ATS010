@@ -1,0 +1,242 @@
+# Knowledge check for section 040. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-040
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-040
+  title: "Applying Policy Types"
+questions:
+  - id: ats010-040-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain why mutate rules run before validate rules, and use that order on purpose"
+    source_readings:
+      - sections/section-040/module-01/course-02-validate-rules-and-order.md
+    prompt: "The `starfleet` namespace has an `Enforce` validate policy that requires every pod to carry an `owner` label. A separate mutate policy matches pods in `starfleet` and adds `owner: platform` when the label is missing. A developer runs `kubectl run probe --image=registry.k8s.io/pause:3.9 -n starfleet` with no labels. What happens?"
+    options:
+      - id: a
+        text: "The pod is admitted and stored with `owner: platform`, because the mutating webhooks run before the validating webhooks."
+        explanation: "Correct. Kyverno's mutate rules finish before any validate rule sees the object, so the validate rule finds the label."
+      - id: b
+        text: "The pod is rejected, because the validate rule checks the YAML as the developer wrote it."
+        explanation: "Validate rules check the object after mutation, not the original YAML."
+      - id: c
+        text: "The pod is admitted without a label, and a policy report records the missing label."
+        explanation: "That is the behaviour of `Audit`, and the object would also not have the label added by the mutate rule."
+      - id: d
+        text: "The result depends on the alphabetical order of the two policy names."
+        explanation: "The API server always calls mutating webhooks before validating webhooks, whatever the policy names are."
+    correct_option: a
+    explanation: "The API server calls the mutating webhooks before the validating webhooks, so the mutate rule adds the label and the validate rule then passes."
+
+  - id: ats010-040-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Write a mutate rule with patchStrategicMerge that adds a default only when the author did not set one"
+    source_readings:
+      - sections/section-040/module-01/course-01-mutate-rules.md
+    prompt: "A mutate rule must give every pod an `owner` label of `platform`, but a pod that already sets `owner: ops` must keep `ops`. Which `patchStrategicMerge` fragment does this?"
+    options:
+      - id: a
+        text: "`metadata: { labels: { owner: platform } }`"
+        explanation: "Without an anchor the merge patch replaces the author's value with `platform`."
+      - id: b
+        text: "`metadata: { labels: { (owner): platform } }`"
+        explanation: "The parentheses make a conditional anchor that selects objects where `owner` already equals `platform`. It is not an add-if-missing anchor."
+      - id: c
+        text: "`metadata: { labels: { +(owner): platform } }`"
+        explanation: "Correct. The `+()` add-if-not-present anchor adds the label only when the pod has no `owner` label."
+      - id: d
+        text: "`metadata: { labels: { =(owner): platform } }`"
+        explanation: "The `=()` anchor is a conditional anchor for validate patterns. It does not add a missing field."
+    correct_option: c
+    explanation: "The `+()` anchor adds a field only when it is absent, so explicit values from the author stay."
+
+  - id: ats010-040-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Write a mutate rule with patchesJson6902 and explain how it differs from a merge patch"
+    source_readings:
+      - sections/section-040/module-01/course-01-mutate-rules.md
+    prompt: "A platform team must make sure that every pod in `starfleet` has `automountServiceAccountToken` set to `false`, even when the author wrote `true`. Which approach gives that exact result?"
+    options:
+      - id: a
+        text: "A merge patch with `+(automountServiceAccountToken): false`."
+        explanation: "The `+()` anchor keeps an existing value, so a pod that sets `true` stays `true`."
+      - id: b
+        text: "A validate rule with `validationFailureAction: Audit`."
+        explanation: "Audit only reports; it changes nothing."
+      - id: c
+        text: "A merge patch that lists `containers` with the conditional anchor `(name): \"*\"`."
+        explanation: "That anchor patches container fields, not the pod-level field."
+      - id: d
+        text: "A `patchesJson6902` rule with an `add` operation on `/spec/automountServiceAccountToken` and the value `false`."
+        explanation: "Correct. The `add` operation sets the field to the given value even when one exists."
+    correct_option: d
+    explanation: "A JSON patch `add` writes the value whatever the author wrote, so it gives a fixed result, while `+()` keeps the author's value."
+
+  - id: ats010-040-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Write a mutate rule with patchesJson6902 and explain how it differs from a merge patch"
+    source_readings:
+      - sections/section-040/module-01/course-01-mutate-rules.md
+    prompt: "A `patchesJson6902` rule uses the operation `add` with the path `/metadata/labels/owner`. A developer creates a pod that has no labels at all. What is the most likely result?"
+    options:
+      - id: a
+        text: "Kyverno creates the `labels` map and adds `owner`, because a JSON patch behaves like a merge patch."
+        explanation: "A JSON patch does not create missing parent objects. A merge patch does."
+      - id: b
+        text: "The patch fails because `/metadata/labels` does not exist, so the request is not processed as intended."
+        explanation: "Correct. `add` needs the parent object to exist. Use a merge patch when you do not know whether the parent is present."
+      - id: c
+        text: "The pod is admitted unchanged and no error is shown."
+        explanation: "A failing JSON patch is reported as an error, not ignored silently."
+      - id: d
+        text: "Kyverno converts the rule into a validate rule."
+        explanation: "Kyverno never changes the type of a rule."
+    correct_option: b
+    explanation: "A JSON patch `add` needs the parent object to exist. A strategic merge patch creates missing parents."
+
+  - id: ats010-040-q05
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Write a validate rule with pattern and a validate rule with deny conditions, and choose between them"
+    source_readings:
+      - sections/section-040/module-01/course-02-validate-rules-and-order.md
+    prompt: "A team must block the deletion of ConfigMaps in `starfleet` that carry the label `protected: \"true\"`. Which design is correct?"
+    options:
+      - id: a
+        text: "A `pattern` rule that requires `metadata.labels.protected: \"true\"` on every ConfigMap, with `background: true`."
+        explanation: "A pattern checks the object that is created or updated. It does not decide on the DELETE operation."
+      - id: b
+        text: "A `mutate` rule that removes the label `protected` on DELETE."
+        explanation: "A mutate rule cannot stop a deletion and removing the label would weaken the protection."
+      - id: c
+        text: "A `deny` rule matched on the ConfigMap kind with `operations: [DELETE]`, a condition on `request.oldObject.metadata.labels.protected`, and `background: false`."
+        explanation: "Correct. On DELETE the new object is empty, so the rule reads `request.oldObject`. A rule that uses `request` cannot run in the background."
+      - id: d
+        text: "A `deny` rule that reads `request.object.metadata.labels.protected`."
+        explanation: "On a DELETE request `request.object` is empty, so the condition would never see the label."
+    correct_option: c
+    explanation: "Use `deny` for decisions about the operation, and read `request.oldObject` for DELETE. Set `background: false` for rules that use `request`."
+
+  - id: ats010-040-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain what synchronize true and synchronize false do when the generated resource or the source is edited or deleted"
+    source_readings:
+      - sections/section-040/module-02/course-01-generate-rules.md
+    prompt: "A generate rule creates a default-deny `NetworkPolicy` in each new namespace with `synchronize: true`. A team administrator deletes the generated policy in their namespace to open traffic. What does Kyverno do?"
+    options:
+      - id: a
+        text: "Kyverno creates the `NetworkPolicy` again, because it keeps the downstream resource equal to the rule."
+        explanation: "Correct. With `synchronize: true` Kyverno restores deleted and edited generated resources."
+      - id: b
+        text: "Nothing. A generate rule runs only once when the namespace is created."
+        explanation: "That describes `synchronize: false`."
+      - id: c
+        text: "Kyverno deletes the namespace, because the policy was violated."
+        explanation: "Kyverno does not delete namespaces for a changed generated resource."
+      - id: d
+        text: "Kyverno rejects the delete request with a validation message."
+        explanation: "Generate rules do not reject requests. Use a validate `deny` rule for that."
+    correct_option: a
+    explanation: "With `synchronize: true`, Kyverno re-creates deleted generated resources and restores edited content."
+
+  - id: ats010-040-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Write a generate rule that creates resources from inline data and by clone when a namespace is created"
+    source_readings:
+      - sections/section-040/module-02/course-01-generate-rules.md
+    prompt: "A generate rule matches `Namespace` resources with the label `fleet-managed: \"true\"`. An administrator runs `kubectl create namespace crew-a` and then `kubectl label namespace crew-a fleet-managed=true`. Nothing is generated. Why?"
+    options:
+      - id: a
+        text: "The background controller is not running."
+        explanation: "If the controller was down, the namespace created with the label would also fail. The cause here is the order of the commands."
+      - id: b
+        text: "Labels on namespaces can never be used in a `match` block."
+        explanation: "A `selector` on `Namespace` is valid in a `match` block."
+      - id: c
+        text: "The policy needs `validationFailureAction: Enforce` to generate."
+        explanation: "That field belongs to validate rules and has no effect on generate."
+      - id: d
+        text: "The rule reacts to the `CREATE` request, which had no label, and `generateExisting` is off by default."
+        explanation: "Correct. The label was added later in an update, so the trigger did not match at creation, and existing namespaces are not backfilled."
+    correct_option: d
+    explanation: "A generate rule fires on the admission of its trigger. The label must be on the namespace when it is created."
+
+  - id: ats010-040-q08
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Check the permissions of the Kyverno background controller and add a ClusterRole when a generate rule cannot create its target"
+    source_readings:
+      - sections/section-040/module-02/course-01-generate-rules.md
+    prompt: "A generate rule for `ResourceQuota` is Ready, but new namespaces get no quota. `kubectl get updaterequests -n kyverno` shows an entry with a permission error for `resourcequotas`. What is the correct fix?"
+    options:
+      - id: a
+        text: "Give the user who creates namespaces the right to create quotas."
+        explanation: "The background controller creates the quota with its own service account, not with the user's rights."
+      - id: b
+        text: "Apply a ClusterRole that allows the verbs on `resourcequotas` and carries the label `rbac.kyverno.io/aggregate-to-background-controller: \"true\"`."
+        explanation: "Correct. Kyverno's background role aggregates every ClusterRole with that label. Check the result with `kubectl auth can-i ... --as=system:serviceaccount:kyverno:kyverno-background-controller`."
+      - id: c
+        text: "Edit the built-in `view` ClusterRole."
+        explanation: "The `view` role is for users and has nothing to do with the Kyverno service account."
+      - id: d
+        text: "Set `synchronize: false` on the rule."
+        explanation: "This field does not change permissions."
+    correct_option: b
+    explanation: "Generate rules run as the background controller's service account, so it needs RBAC for the target kind through an aggregated ClusterRole."
+
+  - id: ats010-040-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Give the cleanup controller the right to delete a resource kind"
+    source_readings:
+      - sections/section-040/module-02/course-02-cleanup-policies.md
+    prompt: "A `ClusterCleanupPolicy` for ConfigMaps was applied without errors and its schedule is every minute, but the expired ConfigMaps are never deleted. What do you check first?"
+    options:
+      - id: a
+        text: "Whether the `ClusterCleanupPolicy` needs `validationFailureAction: Enforce`."
+        explanation: "Cleanup policies have no validation action."
+      - id: b
+        text: "Whether the Kyverno admission controller has a webhook for ConfigMaps."
+        explanation: "Cleanup does not run in the admission path."
+      - id: c
+        text: "Whether the service account `kyverno-cleanup-controller` can delete ConfigMaps, using `kubectl auth can-i delete configmaps --as=system:serviceaccount:kyverno:kyverno-cleanup-controller`."
+        explanation: "Correct. The cleanup controller deletes with its own service account. Without the right the policy is accepted and does nothing."
+      - id: d
+        text: "Whether the user who applied the policy is a cluster administrator."
+        explanation: "The user's rights do not matter at run time."
+    correct_option: c
+    explanation: "The cleanup controller deletes with its own service account, so its ClusterRole needs the delete verb for the kind."
+
+  - id: ats010-040-q10
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Describe what verifyImages checks, how Audit and Enforce differ, and why it needs a registry and a signing key"
+    source_readings:
+      - sections/section-040/module-02/course-03-image-verification-overview.md
+    prompt: "A team wants Kyverno to run only images that the build pipeline signed with `cosign`. Which statement about a `verifyImages` rule is correct?"
+    options:
+      - id: a
+        text: "It scans the image for known vulnerabilities and rejects images with any finding."
+        explanation: "A signature shows who approved the image. It does not scan for vulnerabilities."
+      - id: b
+        text: "It reads the signature from the Kubernetes API server, so no registry access is needed."
+        explanation: "The signature is stored in the registry next to the image, so Kyverno must reach the registry."
+      - id: c
+        text: "In `Audit` mode it rejects pods with unsigned images, and in `Enforce` mode it only reports them."
+        explanation: "The modes are the other way round."
+      - id: d
+        text: "It checks a signature over the image digest against a trusted key or identity, and can replace the tag by the verified digest. `Audit` reports failures and `Enforce` rejects the pod."
+        explanation: "Correct. Kyverno fetches the signature from the registry, verifies it against the attestors and, with `mutateDigest`, pins the pod to the digest it verified."
+    correct_option: d
+    explanation: "Image verification checks a signature on the digest, needs a registry and a key or identity, and uses Audit or Enforce like validate rules."

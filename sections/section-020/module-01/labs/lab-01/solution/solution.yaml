@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-reviewed-public-ingress
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-security-reviewed-annotation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+            names:
+              - "public-*"
+            namespaceSelector:
+              matchLabels:
+                env: prod
+      validate:
+        message: "A non-empty 'security-reviewed' annotation is required on public Ingresses in production."
+        pattern:
+          metadata:
+            annotations:
+              security-reviewed: "?*"

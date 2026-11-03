@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: checkout-require-limits
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-limits-checkout
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - checkout-live
+      validate:
+        message: "Every container must set resources.limits.cpu and resources.limits.memory."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"

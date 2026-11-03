@@ -1,0 +1,37 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-approved-release
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: check-approved-by-annotation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Deployment
+            names:
+              - "release-*"
+            namespaceSelector:
+              matchLabels:
+                env: prod
+            selector:
+              matchLabels:
+                channel: stable
+            operations:
+              - CREATE
+              - UPDATE
+      exclude:
+        any:
+        - subjects:
+            - kind: ServiceAccount
+              name: release-bot
+              namespace: store-prod
+      validate:
+        message: "Stable-channel release-* Deployments in production require an 'approved-by' annotation."
+        pattern:
+          metadata:
+            annotations:
+              approved-by: "?*"

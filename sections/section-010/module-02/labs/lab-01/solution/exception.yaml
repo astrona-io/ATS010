@@ -1,0 +1,19 @@
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: allow-legacy-worker
+  namespace: background-ns
+spec:
+  exceptions:
+    - policyName: require-resource-limits-bg
+      ruleNames:
+        - check-resource-limits-bg
+        - autogen-check-resource-limits-bg
+  match:
+    any:
+      - resources:
+          kinds:
+            - Pod
+            - Deployment
+          names:
+            - "legacy-worker*"

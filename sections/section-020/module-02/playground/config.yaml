@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Selecting by Identity & Operation (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno v1.13.2 and seeds apps-ns with
+# Pods and ServiceAccounts, then stays running for free exploration. No task,
+# no grading, no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-020-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - ghcr.io/stefanprodan/podinfo:6.15.0
+
+# What the learner starts with: Kyverno v1.13.2 ready; namespace apps-ns with
+# Pods web-frontend (tier=frontend) and web-backend (tier=backend); service
+# accounts ci-deployer (Role: create Pods), auditor (ClusterRole view) and
+# ops-admin (ClusterRole admin), bound by RoleBindings. No policy.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its controllers, then seed apps-ns, Pods and service accounts"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

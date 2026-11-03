@@ -1,9 +1,22 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Rule-Level Settings: generateExisting & applyRules (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
   name: "ats-010-lab-008"
   docs:
+    prerequisites: prerequisites.md
     solution: "solution.md"
     question: "question.md"
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2, an extra ClusterRole for the background
+# controller, and the namespaces team-a, team-b and team-c created BEFORE any policy.
 bootstrap:
   init:
     - name: "install-kyverno"
@@ -11,13 +24,45 @@ bootstrap:
       type: "file"
       source: "bootstrap/01-install-kyverno.sh"
     - name: "lab-008-setup"
-      description: "Creates the pre-existing team-a, team-b, and team-c namespaces before any policy exists"
+      description: "Lets the background controller manage NetworkPolicies and creates the pre-existing team-a, team-b and team-c namespaces"
       type: "file"
       source: "bootstrap/02-seed-team-namespaces.sh"
 
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+
 validation:
   scripts:
-    - name: "verify-applyrules-and-generateexisting"
-      description: "Confirms generateExisting backfilled the NetworkPolicy into pre-existing namespaces, forward generation still works, and applyRules: One picks exactly one cost-center label"
+    - name: "generateexisting-backfill"
+      description: "clone-default-netpol sets generateExisting and default-deny-ingress exists in team-a, team-b and team-c but not in system namespaces"
       type: "file"
-      source: "validation/validate-completed.sh"
+      source: "validation/validate-generateexisting-backfill.sh"
+      hint: "Set generateExisting: true under spec, exclude kube-system, kyverno, kube-node-lease, kube-public and local-path-storage, and give the background controller a few seconds."
+    - name: "forward-generation"
+      description: "team-d, created after the policy, also received default-deny-ingress"
+      type: "file"
+      source: "validation/validate-forward-generation.sh"
+      hint: "Create the namespace team-d after applying clone-default-netpol, then check kubectl get networkpolicy -n team-d."
+    - name: "applyrules-one-policy"
+      description: "label-namespace-by-tier uses applyRules One with the gold rule listed first"
+      type: "file"
+      source: "validation/validate-applyrules-one-policy.sh"
+      hint: "applyRules: \"One\" goes under spec. List gold-tier-override first and standard-tier-default second; the order is the priority."
+    - name: "gold-tier-premium"
+      description: "team-a is tier=gold and has cost-center premium"
+      type: "file"
+      source: "validation/validate-gold-tier-premium.sh"
+      hint: "Apply the tier policy first, then run kubectl label namespace team-a tier=gold. The label change is an update, which the mutate rule sees."
+    - name: "standard-tier-default"
+      description: "team-e has no tier label and cost-center standard"
+      type: "file"
+      source: "validation/validate-standard-tier-default.sh"
+      hint: "Create team-e without any tier label after the tier policy is applied; the catch-all rule gives it cost-center: standard."
+
+teardown:
+  keepCluster: false

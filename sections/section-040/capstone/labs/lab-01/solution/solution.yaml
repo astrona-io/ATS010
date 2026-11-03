@@ -1,0 +1,153 @@
+# Reference solution for the capstone lab. Applied only by `astrona test`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-background-extra
+  labels:
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+rules:
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-cleanup-configmaps
+  labels:
+    rbac.kyverno.io/aggregate-to-cleanup-controller: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: onboard-namespace
+spec:
+  rules:
+    - name: team-quota
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  onboarding: "true"
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: team-quota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              pods: "15"
+    - name: default-deny-ingress
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  onboarding: "true"
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-ingress
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: workload-defaults
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+spec:
+  rules:
+    - name: default-cost-center
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  onboarding: "true"
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(cost-center): shared
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: workload-guardrails
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-cost-center
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  onboarding: "true"
+      validate:
+        message: "Every pod needs a non-empty cost-center label."
+        pattern:
+          metadata:
+            labels:
+              cost-center: "?*"
+    - name: no-host-network
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  onboarding: "true"
+      validate:
+        message: "Pods must not use the host network."
+        pattern:
+          spec:
+            =(hostNetwork): "false"
+---
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: expire-shipyard-configmaps
+spec:
+  match:
+    any:
+      - resources:
+          kinds:
+            - ConfigMap
+          namespaces:
+            - shipyard
+  conditions:
+    any:
+      - key: "{{ target.metadata.labels.\"ttl-expired\" || 'false' }}"
+        operator: Equals
+        value: "true"
+  schedule: "* * * * *"

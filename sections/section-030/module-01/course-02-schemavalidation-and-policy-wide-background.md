@@ -1,47 +1,86 @@
-# Part 2 — schemaValidation & Policy-wide background
+# Part 2 - schemaValidation & Policy-wide background
 
-> Prerequisite: [Part 1 — failurePolicy & webhookTimeoutSeconds](./course-01-failurepolicy-and-webhooktimeoutseconds.md). Next: [Module 2 — Rule-Level Settings](../module-02/course.md).
+## Two checks, two different targets
 
-## schemaValidation: Kyverno checking its own homework
+It helps to separate two checks that both sound like "validation":
+
+| Check | Looks at | When |
+| --- | --- | --- |
+| The policy's own validation | The `ClusterPolicy` YAML you apply | Once, when you `kubectl apply` the policy |
+| A `validate` rule | The resources the policy matches | Every admission request, and background scans |
+
+Kyverno always runs its own checks on a policy when you apply it. It rejects an unknown field name, a rule with both `validate` and `mutate`, a rule with no `match`, a variable that is not allowed, and so on, with a message that names the problem. That is why a typo such as `validationFailureAction: Enforse` fails at apply time instead of silently doing nothing. Nothing you set in this part turns those checks off.
+
+## schemaValidation: one specific extra check
 
 ```yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: require-app-label-strict
+  name: example
 spec:
-  schemaValidation: true   # default
+  schemaValidation: true   # historical default
   rules: [ ... ]
 ```
 
-`spec.schemaValidation` defaults to `true`, and it means exactly what it sounds like: when you `kubectl apply` a policy, Kyverno validates the policy resource itself against its own internal schema — checking that `match`, `exclude`, `validate`, `mutate`, and `generate` blocks are shaped the way Kyverno expects — before it ever starts using that policy to evaluate other resources.
+`spec.schemaValidation` is the switch for one extra step of that apply-time check: Kyverno compares what your `mutate` and `generate` rules would produce against the OpenAPI schema of the target resource kind, so a patch that writes a field the kind does not have, or a value of the wrong type, can be caught when the policy is applied instead of when the first resource is admitted. It defaults to `true`.
 
-This is the safety net that catches a typo'd field name or an invalid combination (like a `validate` and `mutate` block on the same rule) at apply time, with a clear error message, instead of letting a broken policy silently apply to zero resources or behave in some undefined way.
+Setting it to `false` skips that schema comparison. In practice it shows up as a workaround when a policy targets a custom resource or a very new field whose schema Kyverno cannot see yet. Two things stay true either way:
 
-Setting `schemaValidation: false` disables that check. In practice this is rare, and mostly shows up as a workaround when a policy needs to use an experimental or very new field that Kyverno's schema validator doesn't yet recognize on an older Kyverno version. Turning it off trades away Kyverno's own typo/shape protection — it is not a setting to reach for casually, and it does not change enforcement behavior (`validationFailureAction`, `failurePolicy`) at all, only whether the *policy resource itself* gets pre-flight-checked.
+- It never changes enforcement. `validationFailureAction`, `failurePolicy`, the `pattern` or `deny` logic and `webhookTimeoutSeconds` behave identically with it on or off.
+- It is not a way to relax how strictly a policy validates *other resources*.
+
+> [!NOTE]
+> Kyverno has been changing how it checks policies from release to release, and newer releases mark this field as deprecated. Treat it as a field you should recognise and normally leave alone, and run `kubectl explain clusterpolicy.spec.schemaValidation` on your cluster to see what its own description says. Do not build a design that depends on it.
 
 > [!WARNING]
 > **Common pitfall**
 >
-> `schemaValidation: false` is sometimes mistaken for a way to relax how strictly a policy validates *other resources*. It does nothing of the sort — it only affects whether Kyverno checks the shape of the policy YAML you're applying. The pattern/deny logic inside your rules validates resources exactly the same either way.
+> `schemaValidation: false` is sometimes mistaken for a way to make a policy "less strict". It does nothing of the sort. Setting it to `false` only removes a safety net around the policy YAML you are applying; the validate logic inside your rules works exactly the same.
+
+> [!TIP]
+> **Try it - break a policy on purpose**
+>
+> In the playground, apply a policy with a typo in a field name, for example `validationFailureAction: Enforse` or `webhookTimeoutSeconds: 31`. Read the error: it comes from the webhook that validates policies, before any resource is involved. Fix the typo and apply again. Then check `kubectl get clusterpolicy` and notice the broken policy never got created.
 
 ## background, revisited as a deliberate setting
 
-You met `spec.background` in Section 010 as the switch that makes Kyverno periodically re-scan resources that already exist, independent of admission control. It's worth returning to it here as one of the "common settings" you configure on every policy, not just something you leave at its default.
+You met `spec.background` in Section 010 as the switch that makes Kyverno periodically re-scan resources that already exist, independent of admission control, and write the results into policy reports. Here it is as one of the "common settings" you configure on every policy.
 
 ```yaml
 spec:
   background: true   # default
 ```
 
-`background` defaults to `true`. The case for deliberately setting it to `false` is specific: a validate rule that inspects data only present at admission time — most commonly `request.operation` (was this a `CREATE`, `UPDATE`, `DELETE`, or `CONNECT`?) or other fields unique to the live `AdmissionReview` object — cannot be meaningfully re-evaluated during a background scan, because a background scan has no admission request to inspect; it only has the resource's current state sitting in the cluster.
+```mermaid
+flowchart LR
+    subgraph admission["Admission path"]
+      R1["new / changed resource"] --> W["webhook request<br/>has userInfo, operation, roles"]
+    end
+    subgraph scan["Background path"]
+      R2["resource already in cluster"] --> S["scan has only the resource<br/>no user, no operation"]
+    end
+    W --> P{"policy rule"}
+    S --> P
+```
 
-If you leave `background: true` on a rule like that, Kyverno's periodic scan either silently skips the parts of the rule it can't evaluate, or produces a report entry that doesn't mean what you think it means. Setting `background: false` is the honest signal: "this rule is admission-only by design," and it also saves the background-scan controller the wasted work of repeatedly trying to re-evaluate a rule it fundamentally can't check outside admission.
+The two paths feed the same rule, but they do not carry the same data. An admission request carries who is calling (`request.userInfo`, `request.roles`, `request.clusterRoles`, the service account name) and what the call was (`request.operation`). A background scan has only the resource as it sits in the cluster; nobody is calling anything.
+
+So a rule that depends on the caller cannot be evaluated by a scan. Kyverno protects you from the worst case: it checks policies that use caller-only variables such as `request.userInfo` with `background: true` and rejects them at apply time with a message that tells you to set `background: false`. Rules that read `request.operation` also belong in this group in spirit, because a scan has no operation to look at, and the safe move is the same.
+
+Setting `background: false` is the honest signal: "this rule is admission-only by design." It also saves the background controller the work of re-evaluating something it can never check, and it means that policy produces no background report entries for those rules.
+
+When you do want a rule to run only as a background scan, the next part shows the companion switch, `admission`.
 
 > [!TIP]
 > **Rule of thumb**
 >
-> If a rule's logic ever references `request.operation`, or anything else that only exists on the live `AdmissionReview` payload rather than the resource's own persisted fields, set `background: false` on it. If the rule only ever inspects fields that live permanently on the resource (labels, spec fields, annotations), leaving `background: true` is almost always correct and lets background scanning and PolicyReports work as expected.
+> If a rule's logic references the caller (`request.userInfo`, `request.roles`, `request.clusterRoles`) or `request.operation`, set `background: false` on the policy. If the rule only ever inspects fields that live permanently on the resource (labels, spec fields, annotations), leave `background: true`: scanning and `PolicyReport` results then work as expected, and a rule you add later in Audit mode gets a report for free.
+
+> [!TIP]
+> **Try it - background: true meets userInfo**
+>
+> Apply a policy with a `validate` message or a `deny` condition that uses `{{ request.userInfo.username }}` and leave `background` unset. Read the error. Then add `background: false` to the policy and apply it again; expect it to be accepted. Which fields were you able to keep using with `background: true`? Try `{{ request.object.metadata.name }}`.
 
 ## Reference
 

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Getting a Policy Live (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno 1.13.2 and seeds two namespaces,
+# then stays running for free exploration. No task, no grading, no
+# `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-010-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+      - busybox:1.36
+
+# What the learner starts with: Kyverno v1.13.2 with its webhooks ready, the
+# namespaces `payments` and `platform-ns`, and a Deployment `ledger` in
+# `payments` that has no `team` label and no resource limits. No policy exists.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its controllers and webhooks, then seed the sandbox"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

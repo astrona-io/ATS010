@@ -1,23 +1,71 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Background Scan & PolicyException (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
-  name: "ats-010-lab-002"
+  name: ats-010-lab-002
   docs:
-    solution: "solution.md"
-    question: "question.md"
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# Starting state: Kyverno v1.13.2 with its webhooks ready and the namespace
+# `background-ns` holding the Deployment `legacy-worker` without resource
+# limits. No policy exists and PolicyException support is not enabled.
 bootstrap:
   init:
-    - name: "install-kyverno"
-      description: "Installs Kyverno onto the kind cluster"
-      type: "file"
-      source: "bootstrap/01-install-kyverno.sh"
-    - name: "lab-002-setup"
-      description: "Creates background-ns and a pre-existing non-compliant legacy-worker Deployment"
-      type: "file"
-      source: "bootstrap/02-seed-namespace-and-legacy-deployment.sh"
+    - name: install-kyverno
+      description: "Install Kyverno v1.13.2 and wait for its controllers and webhooks"
+      type: file
+      source: bootstrap/01-install-kyverno.sh
+    - name: lab-002-setup
+      description: "Create background-ns and a pre-existing non-compliant legacy-worker Deployment"
+      type: file
+      source: bootstrap/02-seed-namespace-and-legacy-deployment.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
 
 validation:
   scripts:
-    - name: "verify-background-scan-and-policyexception"
-      description: "Confirms autogen, background scanning of legacy-worker, blocked new-worker, and the PolicyException all behave as required"
-      type: "file"
-      source: "validation/validate-completed.sh"
+    - name: policy-live-with-autogen
+      description: require-resource-limits-bg is Ready, uses Enforce, has background scanning on and has autogen rules
+      type: file
+      source: validation/validate-policy-live-with-autogen.sh
+      hint: Use validationFailureAction Enforce and leave background true. Autogen is on by default for a Pod rule, so do not set the autogen-controllers annotation to none. Read kubectl get clusterpolicy require-resource-limits-bg -o yaml.
+    - name: background-scan-reported
+      description: A PolicyReport exists in background-ns and legacy-worker was left unchanged
+      type: file
+      source: validation/validate-background-scan-reported.sh
+      hint: Run kubectl get policyreport -n background-ns after applying the policy. The scan needs a short time. Do not edit or delete legacy-worker to make it pass.
+    - name: new-worker-blocked
+      description: A Deployment without limits is rejected in background-ns and new-worker does not exist
+      type: file
+      source: validation/validate-new-worker-blocked.sh
+      hint: Autogen extends the Pod rule to Deployments, so the Deployment itself is rejected at admission. new-worker must not exist at the end.
+    - name: policyexceptions-enabled
+      description: The admission controller runs with --enablePolicyException=true and --exceptionNamespace=background-ns
+      type: file
+      source: validation/validate-policyexceptions-enabled.sh
+      hint: Patch the kyverno-admission-controller Deployment in the kyverno namespace with both args, then wait for the rollout to finish.
+    - name: exception-admits-legacy-worker
+      description: allow-legacy-worker exempts legacy-worker* from the Pod rule and its autogen rule, and legacy-worker rolled a new Pod
+      type: file
+      source: validation/validate-exception-admits-legacy-worker.sh
+      hint: List ruleNames check-resource-limits-bg and autogen-check-resource-limits-bg, match kinds Pod and Deployment with names legacy-worker*, and create the exception in background-ns. Then change an annotation in the Pod template of legacy-worker.
+
+teardown:
+  keepCluster: false

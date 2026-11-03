@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Write And Run Policy Tests With kyverno test (LAB). Graded by running the
+# kyverno CLI on the learner's files in $HOME/kyverno-lab/m2 and by checking
+# the cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
+metadata:
+  name: "ats-010-lab-017"
+  docs:
+    prerequisites: "prerequisites.md"
+    question: "question.md"
+    solution: "solution.md"
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2 in the cluster, the Kyverno CLI v1.13.2 on
+# PATH, two policies and three Pod manifests in $HOME/kyverno-lab/m2, and empty
+# tests/limits, tests/labels and ci directories.
+bootstrap:
+  init:
+    - name: "install-kyverno"
+      description: "Install Kyverno v1.13.2 into the kind cluster"
+      type: "file"
+      source: "bootstrap/01-install-kyverno.sh"
+    - name: "install-kyverno-cli"
+      description: "Download and install the Kyverno CLI v1.13.2"
+      type: "file"
+      source: "bootstrap/02-install-kyverno-cli.sh"
+    - name: "seed-working-directory"
+      description: "Create $HOME/kyverno-lab/m2 with policies, resources and test directories"
+      type: "file"
+      source: "bootstrap/03-seed-working-directory.sh"
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: "apply-solution"
+      description: "Write the test files, the CI script and apply require-limits"
+      type: "file"
+      source: "solution/apply.sh"
+
+validation:
+  scripts:
+    - name: "limits-test"
+      description: "tests/limits has a pass and a fail result and kyverno test succeeds"
+      type: "file"
+      source: "validation/validate-limits-test.sh"
+      hint: "Create tests/limits/kyverno-test.yaml with kind Test, the policy ../../policies/require-limits.yaml, both Pod files, and two results for the rule check-limits: web-ok pass and web-nolimits fail."
+    - name: "mutate-test"
+      description: "tests/labels checks the mutate output with patchedResources"
+      type: "file"
+      source: "validation/validate-mutate-test.sh"
+      hint: "Add a result with rule add-label, resources worker, patchedResources patched.yaml and result pass. Save the expected Pod (with managed-by: kyverno) as tests/labels/patched.yaml."
+    - name: "regression-caught"
+      description: "kyverno test fails when the policy is broken"
+      type: "file"
+      source: "validation/validate-regression-caught.sh"
+      hint: "The check breaks the policy in a copy. If the test still passes, the expected result for web-ok is probably not pass, or the test reads a different policy file."
+    - name: "ci-script"
+      description: "ci/run-policy-tests.sh runs kyverno test on the tests directory"
+      type: "file"
+      source: "validation/validate-ci-script.sh"
+      hint: "Write a bash script with set -euo pipefail that changes to the lab directory (cd \"$(dirname \"$0\")/..\") and runs kyverno test tests. Then chmod +x it."
+    - name: "policy-live"
+      description: "The tested policy require-limits is live in the cluster"
+      type: "file"
+      source: "validation/validate-policy-live.sh"
+      hint: "After the tests pass, run kubectl apply -f policies/require-limits.yaml and wait until the policy is Ready."
+
+teardown:
+  keepCluster: false

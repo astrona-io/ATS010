@@ -1,13 +1,27 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Resource Selection Integration Capstone (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
   name: "ats-010-lab-006"
   docs:
-    solution: "solution.md"
-    question: "question.md"
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# Starting state: Kyverno v1.13.2, namespaces store-prod (env=prod) and
+# store-dev (env=dev), and the release-bot ServiceAccount with RBAC to write
+# Deployments in store-prod. No policy.
 bootstrap:
   init:
     - name: "install-kyverno"
-      description: "Installs Kyverno onto the kind cluster"
+      description: "Installs Kyverno v1.13.2 onto the kind cluster"
       type: "file"
       source: "bootstrap/01-install-kyverno.sh"
     - name: "capstone-020-setup"
@@ -15,9 +29,45 @@ bootstrap:
       type: "file"
       source: "bootstrap/02-seed-environment.sh"
 
+# Applied only by `astrona test`: the reference solution and the exercise Deployments.
+testing:
+  init:
+    - name: "apply-solution"
+      description: "Apply the reference ClusterPolicy"
+      type: "file"
+      source: "solution/apply.sh"
+    - name: "create-exercise-objects"
+      description: "Wait for enforcement, then create the Deployments from the question"
+      type: "file"
+      source: "testing/create-exercise-objects.sh"
+
 validation:
   scripts:
-    - name: "verify-section-020-capstone"
-      description: "Confirms require-approved-release combines name, namespaceSelector, objectSelector, operations, and subjects-exclude correctly"
+    - name: "policy-defined"
+      description: "The ClusterPolicy exists, is Enforce, and uses kinds, names, namespaceSelector, selector, operations CREATE and UPDATE, a release-bot exclude, background false"
       type: "file"
-      source: "validation/validate-completed.sh"
+      source: "validation/validate-policy-defined.sh"
+      hint: "Put kinds, names, namespaceSelector, selector and operations together in ONE resources block under match.any. The exclude block (subjects) sits next to match. Set background: false."
+    - name: "in-scope-enforced"
+      description: "A stable release-* Deployment in store-prod is rejected without approved-by and admitted with it"
+      type: "file"
+      source: "validation/validate-in-scope-enforced.sh"
+      hint: "The validate pattern requires metadata.annotations.approved-by with the value \"?*\". Kyverno needs a few seconds after apply; try again."
+    - name: "each-axis-narrows"
+      description: "A different name, namespace or channel each take a request out of scope"
+      type: "file"
+      source: "validation/validate-each-axis-narrows.sh"
+      hint: "names must be release-*, namespaceSelector must be env: prod, and selector.matchLabels must be channel: stable. Remember selector reads labels on the Deployment, namespaceSelector reads labels on the Namespace."
+    - name: "exclude-and-operations"
+      description: "release-bot is excluded and UPDATE requests are in scope"
+      type: "file"
+      source: "validation/validate-exclude-and-operations.sh"
+      hint: "operations must list both CREATE and UPDATE. subjects needs kind ServiceAccount, name release-bot, namespace store-prod."
+    - name: "exercise-objects"
+      description: "release-app (store-prod via release-bot, and store-dev) and release-canary exist"
+      type: "file"
+      source: "validation/validate-exercise-objects.sh"
+      hint: "Create release-app in store-prod with --as=system:serviceaccount:store-prod:release-bot, release-canary with channel=beta, and release-app in store-dev."
+
+teardown:
+  keepCluster: false

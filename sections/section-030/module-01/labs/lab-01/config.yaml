@@ -1,9 +1,23 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Policy-Level Settings: failurePolicy & webhookTimeoutSeconds (LAB). Graded against the live cluster.
+# UNTESTED - built from static checks only; not yet booted.
+apiVersion: astrona.io/v1
 metadata:
   name: "ats-010-lab-007"
   docs:
+    prerequisites: prerequisites.md
     solution: "solution.md"
     question: "question.md"
 
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - nginx:alpine
+
+# Starting state: Kyverno v1.13.2 and the empty namespaces critical-ns and lenient-ns.
 bootstrap:
   init:
     - name: "install-kyverno"
@@ -15,9 +29,41 @@ bootstrap:
       type: "file"
       source: "bootstrap/02-create-namespaces.sh"
 
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+
 validation:
   scripts:
-    - name: "verify-failurepolicy-and-timeout-settings"
-      description: "Confirms both ClusterPolicies exist with the correct failurePolicy/webhookTimeoutSeconds, enforce the app label correctly, and that the admission controller is healthy"
+    - name: "strict-policy-settings"
+      description: "require-app-label-strict is Ready with failurePolicy Fail, webhookTimeoutSeconds 5 and Enforce"
       type: "file"
-      source: "validation/validate-completed.sh"
+      source: "validation/validate-strict-policy-settings.sh"
+      hint: "Set failurePolicy: Fail, webhookTimeoutSeconds: 5 and validationFailureAction: Enforce directly under spec, then check kubectl get clusterpolicy."
+    - name: "lenient-policy-settings"
+      description: "require-app-label-lenient is Ready with failurePolicy Ignore, webhookTimeoutSeconds 5 and Enforce"
+      type: "file"
+      source: "validation/validate-lenient-policy-settings.sh"
+      hint: "It is the same policy shape with failurePolicy: Ignore. Both settings live at spec level, not inside the rule."
+    - name: "critical-ns-enforces-label"
+      description: "critical-ns rejects a Pod with no app label and admitted has-app-pod"
+      type: "file"
+      source: "validation/validate-critical-ns-enforces-label.sh"
+      hint: "Match kinds [Pod] and namespaces [critical-ns], use pattern metadata.labels.app: \"?*\", and create has-app-pod with --labels=app=checkout."
+    - name: "lenient-ns-enforces-label"
+      description: "lenient-ns rejects a Pod with no app label and admitted has-app-pod"
+      type: "file"
+      source: "validation/validate-lenient-ns-enforces-label.sh"
+      hint: "Failure policy makes no difference while Kyverno is healthy, so the rule shape is the same; only the namespace changes."
+    - name: "admission-controller-healthy"
+      description: "kyverno-admission-controller is back to its full ready replica count"
+      type: "file"
+      source: "validation/validate-admission-controller-healthy.sh"
+      hint: "If you scaled it down, scale it back to the original count (1 by default) and run kubectl -n kyverno rollout status deployment/kyverno-admission-controller."
+
+teardown:
+  keepCluster: false

@@ -1,0 +1,252 @@
+# Knowledge check for section 030. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-030
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-030
+  title: "Common Policy Settings"
+questions:
+  - id: ats010-030-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Predict what happens to a matching request when Kyverno's admission controller is unreachable and the policy uses the default failurePolicy"
+    source_readings:
+      - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+    prompt: |-
+      A `ClusterPolicy` enforces a required label on Pods and leaves `failurePolicy` at its default. A bad rollout leaves Kyverno's admission controller with no ready pods. A developer creates a Pod that matches the policy. What happens?
+    options:
+      - id: a
+        text: "The Pod is admitted, because Kyverno cannot be reached to say otherwise."
+        explanation: "This describes `failurePolicy: Ignore`, not the default."
+      - id: b
+        text: "The API server retries until Kyverno comes back, then applies the policy."
+        explanation: "The API server waits only up to `webhookTimeoutSeconds` and then applies `failurePolicy`. It does not retry indefinitely."
+      - id: c
+        text: "The request is queued and replayed once the admission controller recovers."
+        explanation: "Kubernetes admission has no queue like that."
+      - id: d
+        text: "The Pod is denied, because the default `Fail` closes the door when the webhook cannot answer."
+        explanation: "Correct. The default `failurePolicy` is `Fail` (fail closed), and the API server applies it, so it works even though Kyverno is not running."
+    correct_option: d
+    explanation: "The default `failurePolicy` is `Fail`. When the webhook times out or cannot be reached, the API server denies the request."
+
+  - id: ats010-030-q02
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Choose failurePolicy for a policy based on its risk profile and Kyverno's availability"
+    source_readings:
+      - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+    prompt: |-
+      A platform team has two policies. One blocks privileged containers. The other asks for a `cost-center` label on Deployments, and it matches every Deployment in the cluster. Kyverno runs with one replica and sometimes restarts during upgrades. Which choice fits best?
+    options:
+      - id: a
+        text: "`Ignore` for the privileged-container policy and `Fail` for the label policy."
+        explanation: "This is the wrong way round. A silent gap in a security guardrail is the worse outcome."
+      - id: b
+        text: "`Fail` for both, because `Fail` is always the safe setting."
+        explanation: "`Fail` on a policy that matches every Deployment means a Kyverno restart blocks all Deployment changes in the cluster, for a convention."
+      - id: c
+        text: "`Fail` for the privileged-container policy and `Ignore` for the label policy, and add more admission controller replicas."
+        explanation: "Correct. The guardrail stays closed, the convention stays available during an outage, and more replicas shrink the failure window."
+      - id: d
+        text: "`Ignore` for both, because the timeout will catch problems anyway."
+        explanation: "The timeout only moves the moment at which `failurePolicy` takes over. With `Ignore`, the privileged policy would be silently off during an outage."
+    correct_option: c
+    explanation: "Use `Fail` for the few policies where one bad resource is an incident, and `Ignore` for conventions that match many requests, and keep Kyverno itself highly available."
+
+  - id: ats010-030-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "State what webhookTimeoutSeconds controls and its limits"
+    source_readings:
+      - sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
+    prompt: |-
+      An engineer sets `webhookTimeoutSeconds: 45` on a policy to be safe with slow API calls in its rules. What happens, and what does the field control?
+    options:
+      - id: a
+        text: "The policy is rejected at apply time, because the allowed range is 1 to 30. The field is how long the API server waits for Kyverno's answer."
+        explanation: "Correct. The range is 1 to 30 with a default of 10, and the value is the wait before `failurePolicy` takes over."
+      - id: b
+        text: "The policy is accepted, and the background scan waits 45 seconds between runs."
+        explanation: "The field has nothing to do with background scan timing."
+      - id: c
+        text: "The policy is accepted and Kyverno caps it at 30 silently."
+        explanation: "Kyverno rejects out-of-range values instead of capping them."
+      - id: d
+        text: "The policy is accepted, and `generate` rules wait 45 seconds before they create anything."
+        explanation: "The field is about the admission call, not about generate timing."
+    correct_option: a
+    explanation: "`webhookTimeoutSeconds` is the time the API server waits for the webhook, 1 to 30 seconds, default 10. After that `failurePolicy` decides."
+
+  - id: ats010-030-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain what schemaValidation does and does not change"
+    source_readings:
+      - sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
+    prompt: |-
+      A teammate wants to make a noisy `validate` policy "less strict" and proposes setting `schemaValidation: false`. What is the effect of that field?
+    options:
+      - id: a
+        text: "Resources that fail the `pattern` are now admitted."
+        explanation: "The field does not touch how rules validate other resources."
+      - id: b
+        text: "Kyverno skips the extra apply-time comparison of what the policy's `mutate` and `generate` rules produce with the resource schema. Enforcement is unchanged."
+        explanation: "Correct. It affects only the check on the policy itself, and newer releases treat the field as deprecated."
+      - id: c
+        text: "The policy's `failurePolicy` changes to `Ignore`."
+        explanation: "The two settings are independent."
+      - id: d
+        text: "`validate` and `mutate` can now be combined in one rule."
+        explanation: "Kyverno's own rule checks still reject that."
+    correct_option: b
+    explanation: "`schemaValidation` concerns the policy YAML itself. It never relaxes enforcement; use `validationFailureAction` or exceptions for that."
+
+  - id: ats010-030-q05
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Decide when background must be false and what happens with caller-dependent variables"
+    source_readings:
+      - sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
+    prompt: |-
+      A `validate` rule denies a request when `{{ request.userInfo.username }}` is not in an allow-list. The policy leaves `background` at its default. What is the right reading of the situation?
+    options:
+      - id: a
+        text: "Nothing is wrong. A background scan has the same caller information as an admission request."
+        explanation: "A scan has only the stored resource, with no caller."
+      - id: b
+        text: "Set `admission: false` so only scans run."
+        explanation: "That would remove the rule from the only path where the caller is known."
+      - id: c
+        text: "Set `failurePolicy: Ignore`, which tells scans to skip caller data."
+        explanation: "`failurePolicy` is about the webhook call, not about scans."
+      - id: d
+        text: "Set `background: false`. The rule only makes sense at admission, and Kyverno typically rejects caller variables with `background: true` at apply time."
+        explanation: "Correct. Caller data exists only on the admission request, so the policy is admission-only."
+    correct_option: d
+    explanation: "Rules that use `request.userInfo`, roles or the operation need `background: false`, because a background scan has no caller."
+
+  - id: ats010-030-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Combine admission, background and validationFailureAction to get a reporting-only policy"
+    source_readings:
+      - sections/section-030/module-01/course-03-admission-validationfailureaction-and-emitwarning.md
+    prompt: |-
+      A team wants to measure how many existing Deployments break a new rule, without risking any admission delay or denial for anyone. Which combination does that?
+    options:
+      - id: a
+        text: "`admission: true`, `background: false`, `validationFailureAction: Audit`."
+        explanation: "This is admission-only. It reports nothing about existing resources and still sits in the webhook path."
+      - id: b
+        text: "`admission: false`, `background: false`."
+        explanation: "Neither path is active, so the policy does nothing."
+      - id: c
+        text: "`admission: true`, `background: true`, `validationFailureAction: Enforce`."
+        explanation: "This denies non-compliant requests, which the team wants to avoid."
+      - id: d
+        text: "`admission: false`, `background: true`, with results read from the PolicyReports."
+        explanation: "Correct. The policy leaves the admission path, so it cannot block or delay anything, and scans report on resources already in the cluster."
+    correct_option: d
+    explanation: "A scan-only policy (`admission: false`, `background: true`) produces report results for existing resources and never touches admission."
+
+  - id: ats010-030-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict which rules run under applyRules One"
+    source_readings:
+      - sections/section-030/module-02/course-01-applyrules-all-vs-one.md
+    prompt: |-
+      A policy with `applyRules: "One"` lists three rules in this order: `rule-a`, `rule-b`, `rule-c`. A Namespace matches `rule-a` and `rule-c` but not `rule-b`. Which rule runs?
+    options:
+      - id: a
+        text: "`rule-a` and `rule-c`."
+        explanation: "This is the default `All` behavior."
+      - id: b
+        text: "`rule-c`, because the last match wins."
+        explanation: "The first match wins, not the last."
+      - id: c
+        text: "All three, because `applyRules` affects only `generate` rules."
+        explanation: "The field is meant for validate and mutate rule lists, and it does not mean all rules run."
+      - id: d
+        text: "Only `rule-a`."
+        explanation: "Correct. Kyverno goes through the list in order and stops after the first rule that matches and runs."
+    correct_option: d
+    explanation: "With `applyRules: \"One\"` the order of `spec.rules` is the priority and later matching rules are skipped for that resource."
+
+  - id: ats010-030-q08
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Diagnose conflicting mutate rules and fix them with applyRules One and rule order"
+    source_readings:
+      - sections/section-030/module-02/course-01-applyrules-all-vs-one.md
+    prompt: |-
+      A policy has two mutate rules on Namespaces: `standard-tier-default` (matches every Namespace, sets `cost-center: standard`) listed first, then `gold-tier-override` (matches `tier: gold`, sets `cost-center: premium`). It uses `applyRules: "One"`. Gold namespaces keep getting `standard`. What is the fix?
+    options:
+      - id: a
+        text: "Remove `applyRules`, so only the gold rule applies to gold namespaces."
+        explanation: "With `All` both rules run and the later patch overwrites the earlier, which is not a dependable way to get one outcome."
+      - id: b
+        text: "Move `gold-tier-override` above `standard-tier-default`, so the specific rule is evaluated first."
+        explanation: "Correct. With `One` the first matching rule wins, so the catch-all must come last."
+      - id: c
+        text: "Set `failurePolicy: Fail` so Kyverno re-evaluates the rules."
+        explanation: "`failurePolicy` has no part in choosing between rules."
+      - id: d
+        text: "Add `generateExisting: true`."
+        explanation: "That field belongs to generate rules and does not affect rule priority."
+    correct_option: b
+    explanation: "Under `applyRules: \"One\"` the catch-all matches everything, so when it is first it always wins. Put narrow rules first."
+
+  - id: ats010-030-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain why a generate rule does not reach resources that existed before the policy"
+    source_readings:
+      - sections/section-030/module-02/course-02-generateexisting-and-mutateexistingonpolicyupdate.md
+    prompt: |-
+      A platform team applies a new `generate` policy that creates a default-deny `NetworkPolicy` in every Namespace. The cluster already has 40 namespaces. Two hours later only the namespaces created after the policy have the `NetworkPolicy`. Why, and what fixes it?
+    options:
+      - id: a
+        text: "The background scan has not run yet; wait 24 hours."
+        explanation: "No such delayed backfill exists."
+      - id: b
+        text: "Generate rules react to admission of new trigger resources. Set `generateExisting: true` so Kyverno also runs the rule against existing namespaces."
+        explanation: "Correct. The 40 namespaces produced no admission event for the new policy, so the opt-in field is needed."
+      - id: c
+        text: "Delete and recreate the 40 namespaces so the rule triggers on them."
+        explanation: "This is destructive and unnecessary."
+      - id: d
+        text: "Set `mutateExistingOnPolicyUpdate: true`."
+        explanation: "That field is for mutate rules with `targets`, not for generate rules."
+    correct_option: b
+    explanation: "By default generate rules are forward-only. `generateExisting: true` runs them against trigger resources that already exist when the policy is created or updated."
+
+  - id: ats010-030-q10
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Diagnose a backfill that does nothing and pick the right place to look"
+    source_readings:
+      - sections/section-030/module-02/course-03-backfilling-safely.md
+    prompt: |-
+      A policy with `generateExisting: true` is `Ready`, but five minutes later none of the existing namespaces has the generated `ConfigMap`. New namespaces do not get it either, and `kubectl apply` of the policy showed no error. Where do you look first?
+    options:
+      - id: a
+        text: "The background controller's logs and its RBAC. It may lack rights on ConfigMaps, which Kyverno gives through ClusterRoles with the aggregation label."
+        explanation: "Correct. Generate work runs in the background controller with its own rights, and failures show up in its logs and the policy status, not in `kubectl apply`."
+      - id: b
+        text: "The `webhookTimeoutSeconds` value, which must be raised for backfills."
+        explanation: "A backfill is not an admission call, so the webhook timeout is not involved."
+      - id: c
+        text: "The `failurePolicy`, which must be `Ignore` for a backfill to run."
+        explanation: "`failurePolicy` is about unreachable webhooks and does not gate a backfill."
+      - id: d
+        text: "The `validationFailureAction`, which must be `Audit` to allow a backfill."
+        explanation: "That field applies to validate rules only."
+    correct_option: a
+    explanation: "Policies can be accepted while the background controller cannot do the work. Check its logs and the ClusterRoles aggregated into it."

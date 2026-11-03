@@ -22,6 +22,9 @@ This section is divided into two sequential modules, each paired with a dedicate
 *   **Module Reader:** **[Module 1: Getting a Policy Live](./module-01/course.md)**
     1. [Applying ClusterPolicy & Policy with kubectl](./module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md)
     2. [Enforce vs Audit at Apply Time](./module-01/course-02-enforce-vs-audit-at-apply-time.md)
+    3. [Inspecting Policy Status, Reports and Events](./module-01/course-03-inspecting-policy-status-reports-and-events.md)
+    4. [Summary](./module-01/course-04-summary.md)
+*   **Playground:** `sections/section-010/module-01/playground`, an ungraded cluster with Kyverno installed and seeded namespaces (`ats-010-playground-010-01`).
 *   **Practice Lab Sandbox:** **`sections/section-010/module-01/labs/lab-01`**
 *   **Lab Run Command:**
     ```bash
@@ -32,7 +35,10 @@ This section is divided into two sequential modules, each paired with a dedicate
 ### 2. Applying Beyond Admission: Background Scans, Autogen & Exceptions
 *   **Module Reader:** **[Module 2: Applying Beyond Admission](./module-02/course.md)**
     1. [Background Scanning Already-Existing Resources](./module-02/course-01-background-scanning-already-existing-resources.md)
-    2. [Autogen for Pod Controllers & PolicyExceptions](./module-02/course-02-autogen-and-policyexceptions.md)
+    2. [Autogen for Pod Controllers](./module-02/course-02-autogen-for-pod-controllers.md)
+    3. [PolicyExceptions in Depth](./module-02/course-03-policyexceptions-in-depth.md)
+    4. [Summary](./module-02/course-04-summary.md)
+*   **Playground:** `sections/section-010/module-02/playground`, an ungraded cluster with Kyverno installed and two legacy Deployments (`ats-010-playground-010-02`).
 *   **Practice Lab Sandbox:** **`sections/section-010/module-02/labs/lab-01`**
 *   **Lab Run Command:**
     ```bash
@@ -41,6 +47,7 @@ This section is divided into two sequential modules, each paired with a dedicate
 *   **Hands-on Objective:** Apply a policy against a cluster with a pre-existing non-compliant Deployment, confirm autogen and background scanning both do their job, then enable and use a `PolicyException` to exempt that legacy workload.
 
 ### 3. Section Capstone Challenge
+*   **Status:** UNTESTED - built from static checks only; not yet booted.
 *   **Comprehensive Challenge:** **`sections/section-010/capstone/labs/lab-01` (Applying Policy in Cluster Integration)**
 *   **Lab Run Command:**
     ```bash
@@ -54,4 +61,4 @@ This section is divided into two sequential modules, each paired with a dedicate
 
 Test your theoretical knowledge and diagnostic reasoning before tackling the practical lab missions:
 
-*   **[Take the Section 010 Knowledge Check Quiz](./quiz.md)**
+*   **[Take the Section 010 Knowledge Check Quiz](./quiz.yaml)**

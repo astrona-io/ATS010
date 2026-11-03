@@ -20,173 +20,228 @@ modules:
       Move from a written policy manifest to a policy that is actually
       live in the cluster: applying ClusterPolicy and Policy objects with
       kubectl, the difference between what Enforce blocks at admission
-      time and what Audit only records, background scanning already-
-      existing resources, autogen rules for Pod controllers, and
-      PolicyExceptions as a scoped, auditable override.
+      time and what Audit only records, inspecting policy status and
+      reports, background scanning already-existing resources, autogen
+      rules for Pod controllers, and PolicyExceptions as a scoped,
+      auditable override.
 
     content:
       - type: reading
-        title: Section Overview
+        title: "Section Overview"
         path: sections/section-010/README.md
-
       - type: reading
-        title: "Module 1: Getting a Policy Live: ClusterPolicy vs Policy & the Admission Path"
+        title: "Getting a Policy Live: ClusterPolicy vs Policy & the Admission Path"
         path: sections/section-010/module-01/course.md
-
       - type: reading
-        title: "Module 1.1: Applying ClusterPolicy & Policy with kubectl"
+        title: "Applying ClusterPolicy & Policy with kubectl"
         path: sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
-
       - type: reading
-        title: "Module 1.2: Enforce vs Audit at Apply Time"
+        title: "Enforce vs Audit at Apply Time"
         path: sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
-
       - type: reading
-        title: Question
+        title: "Inspecting Policy Status, Reports and Events"
+        path: sections/section-010/module-01/course-03-inspecting-policy-status-reports-and-events.md
+      - type: reading
+        title: "Question"
         path: sections/section-010/module-01/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-010/module-01/labs/lab-01/solution.md
-
       - type: lab
         title: "Enforce-Mode Resource Limits Policy Lab"
         path: sections/section-010/module-01/labs/lab-01
         difficulty: intermediate
-
+        estimated_duration: 20m
+        topic: policy-application
+        task_kind: build
+        tags: [kyverno, clusterpolicy, audit, enforce, policyreport, dry-run]
+        learning_goals:
+          - Apply a ClusterPolicy in Audit mode and read the violation in a PolicyReport
+          - Switch the same policy to Enforce and see a violating Pod blocked while a compliant Pod is admitted
+          - Check that a policy is Ready before relying on it
+        resources:
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/validate/
+          - name: "Kyverno policy reports"
+            url: https://kyverno.io/docs/policy-reports/
       - type: reading
-        title: "Module 2: Applying Beyond Admission: Background Scans, Autogen & Exceptions"
+        title: "Summary"
+        path: sections/section-010/module-01/course-04-summary.md
+      - type: reading
+        title: "Applying Beyond Admission: Background Scans, Autogen & Exceptions"
         path: sections/section-010/module-02/course.md
-
       - type: reading
-        title: "Module 2.1: Background Scanning Already-Existing Resources"
+        title: "Background Scanning Already-Existing Resources"
         path: sections/section-010/module-02/course-01-background-scanning-already-existing-resources.md
-
       - type: reading
-        title: "Module 2.2: Autogen for Pod Controllers & PolicyExceptions"
-        path: sections/section-010/module-02/course-02-autogen-and-policyexceptions.md
-
+        title: "Autogen for Pod Controllers"
+        path: sections/section-010/module-02/course-02-autogen-for-pod-controllers.md
       - type: reading
-        title: Question
+        title: "PolicyExceptions in Depth"
+        path: sections/section-010/module-02/course-03-policyexceptions-in-depth.md
+      - type: reading
+        title: "Question"
         path: sections/section-010/module-02/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-010/module-02/labs/lab-01/solution.md
-
       - type: lab
         title: "Background Scan & PolicyException Lab"
         path: sections/section-010/module-02/labs/lab-01
         difficulty: intermediate
-
+        estimated_duration: 30m
+        topic: policy-application
+        task_kind: build
+        tags: [kyverno, background-scan, autogen, policyexception, policyreport]
+        learning_goals:
+          - Confirm autogen rules and a background scan report for a pre-existing Deployment
+          - Show that a new non-compliant Deployment is blocked at admission
+          - Enable PolicyExceptions and exempt one legacy Deployment with a narrow exception
+        resources:
+          - name: "Kyverno autogen rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/autogen/
+          - name: "Kyverno PolicyExceptions"
+            url: https://kyverno.io/docs/policy-exceptions/
       - type: reading
-        title: "Section 010 Knowledge Check: Applying Policy in Cluster"
-        path: sections/section-010/quiz.md
-
+        title: "Summary"
+        path: sections/section-010/module-02/course-04-summary.md
       - type: reading
-        title: Question
+        title: "Question"
         path: sections/section-010/capstone/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-010/capstone/labs/lab-01/solution.md
-
       - type: lab
         title: "Applying Policy in Cluster Capstone Lab"
         path: sections/section-010/capstone/labs/lab-01
         difficulty: advanced
+        estimated_duration: 30m
+        topic: policy-application
+        task_kind: integrate
+        tags: [kyverno, enforce, audit, background-scan, policyexception, autogen]
+        learning_goals:
+          - Enforce a rule in one namespace and audit it in another from two separate policies
+          - Confirm a legacy Deployment is reported but left untouched
+          - Admit a migration Job through a PolicyException that names the autogen rule
+        resources:
+          - name: "Kyverno PolicyExceptions"
+            url: https://kyverno.io/docs/policy-exceptions/
+          - name: "Kyverno policy reports"
+            url: https://kyverno.io/docs/policy-reports/
+      - type: quiz
+        title: "Section 010 Knowledge Check: Applying Policy in Cluster"
+        path: sections/section-010/quiz.yaml
+        pass_score: 70
 
   - id: module-020
-    title: "Section 020: Resource Selection"
+    title: "Resource Selection"
     description: >
-      Go deep on the match/exclude block that decides which resources a
-      Kyverno rule ever sees: selecting by kind, name, and wildcard;
-      scoping by namespace and namespaceSelector; filtering by object
-      labels and admission operation; and selecting by caller identity
-      with subjects, roles, and clusterRoles, combined with any/all
-      logic.
-
+      Control exactly which resources a Kyverno rule sees: kinds, names and
+      wildcards, namespaces and namespaceSelector, annotations, exclude
+      precedence, selector and operations, and requester identity with
+      subjects, roles and clusterRoles. Each module pairs a layered reader
+      with an ungraded playground and a graded lab, and the section closes
+      with an integration capstone.
     content:
       - type: reading
-        title: Section Overview
+        title: "Section 020: Resource Selection"
         path: sections/section-020/README.md
-
       - type: reading
-        title: "Module 1: match/exclude Fundamentals: Kinds, Names & Namespaces"
+        title: "match/exclude Fundamentals: Kinds, Names & Namespaces"
         path: sections/section-020/module-01/course.md
-
       - type: reading
-        title: "Module 1.1: Selecting by Kind, Name & Wildcards"
+        title: "Selecting by Kind, Name & Wildcards"
         path: sections/section-020/module-01/course-01-selecting-by-kind-name-and-wildcards.md
-
       - type: reading
-        title: "Module 1.2: Namespaces & namespaceSelector"
+        title: "Namespaces & namespaceSelector"
         path: sections/section-020/module-01/course-02-namespaces-and-namespaceselector.md
-
       - type: reading
-        title: Question
+        title: "Annotations, Exclude Precedence & Policy Scope"
+        path: sections/section-020/module-01/course-03-annotations-exclude-precedence-and-policy-scope.md
+      - type: reading
+        title: "Question"
         path: sections/section-020/module-01/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-020/module-01/labs/lab-01/solution.md
-
       - type: lab
-        title: "Namespace & Kind Scoped Policy Lab"
+        title: "Scope a Rule by Kind, Name and Namespace Label Lab"
         path: sections/section-020/module-01/labs/lab-01
         difficulty: intermediate
-
+        estimated_duration: 25m
+        topic: policy-scope
+        task_kind: build
+        tags: [kyverno, match, exclude, names, wildcards, namespaceSelector, ingress]
+        learning_goals:
+          - Write a ClusterPolicy that matches Ingresses by name pattern in namespaces labeled env=prod
+          - Prove the rule blocks in scope, admits out of scope and follows namespace relabeling
+          - Explain why a name or label change takes a resource out of scope
+        resources:
+          - name: "Kyverno match and exclude"
+            url: https://kyverno.io/docs/writing-policies/match-exclude/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/writing-policies/validate/
       - type: reading
-        title: "Module 2: Selecting by Identity & Operation"
+        title: "Summary"
+        path: sections/section-020/module-01/course-04-summary.md
+      - type: reading
+        title: "Selecting by Identity & Operation"
         path: sections/section-020/module-02/course.md
-
       - type: reading
-        title: "Module 2.1: objectSelector & Operations"
-        path: sections/section-020/module-02/course-01-objectselector-and-operations.md
-
+        title: "selector & Operations"
+        path: sections/section-020/module-02/course-01-selector-and-operations.md
       - type: reading
-        title: "Module 2.2: subjects, roles, clusterRoles & any/all"
+        title: "subjects, roles, clusterRoles & any/all"
         path: sections/section-020/module-02/course-02-subjects-roles-clusterroles-and-any-all.md
-
       - type: reading
-        title: Question
+        title: "Debugging Why a Rule Did or Did Not Match"
+        path: sections/section-020/module-02/course-03-debugging-why-a-rule-did-or-did-not-match.md
+      - type: reading
+        title: "Question"
         path: sections/section-020/module-02/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-020/module-02/labs/lab-01/solution.md
-
       - type: lab
-        title: "Identity-Based Resource Selection Lab"
+        title: "Select by Labels and Exempt a CI Identity Lab"
         path: sections/section-020/module-02/labs/lab-01
         difficulty: intermediate
-
+        estimated_duration: 25m
+        topic: policy-scope
+        task_kind: build
+        tags: [kyverno, selector, operations, subjects, exclude, impersonation, background]
+        learning_goals:
+          - Scope a rule to frontend Pods with selector and operations
+          - Exclude a CI ServiceAccount with a subjects-based exclude and background false
+          - Prove the exclusion with kubectl --as impersonation and server-side dry-run
+        resources:
+          - name: "Kyverno match and exclude"
+            url: https://kyverno.io/docs/writing-policies/match-exclude/
+          - name: "Kubernetes user impersonation"
+            url: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation
       - type: reading
-        title: "Section 020 Knowledge Check: Resource Selection"
-        path: sections/section-020/quiz.md
-
+        title: "Summary"
+        path: sections/section-020/module-02/course-04-summary.md
       - type: reading
-        title: Question
+        title: "Question"
         path: sections/section-020/capstone/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-020/capstone/labs/lab-01/solution.md
-
       - type: lab
-        title: "Resource Selection Capstone Lab"
+        title: "Resource Selection Integration Capstone Lab"
         path: sections/section-020/capstone/labs/lab-01
         difficulty: advanced
+        estimated_duration: 40m
+        topic: policy-scope
+        task_kind: integration
+        tags: [kyverno, match, exclude, names, namespaceSelector, selector, operations, subjects, capstone]
+        learning_goals:
+          - Combine name, namespace label, resource label and operation filters in one match block
+          - Add a subjects-based exclude and keep background false
+          - Prove each axis independently takes a resource out of scope
+        resources:
+          - name: "Kyverno match and exclude"
+            url: https://kyverno.io/docs/writing-policies/match-exclude/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/writing-policies/validate/
+      - type: quiz
+        title: "Knowledge Check: Resource Selection"
+        path: sections/section-020/quiz.yaml
+        pass_score: 70
 
   - id: module-030
-    title: "Section 030: Common Policy Settings for Kyverno Rules"
+    title: "Common Policy Settings"
     description: >
       Master the policy-level and rule-level settings that decide how a
       Kyverno policy behaves once it is live: failurePolicy and
-      webhookTimeoutSeconds for webhook resilience, schemaValidation and
-      background scanning at the policy level, and rule-level controls
-      such as applyRules, generateExisting, and
-      mutateExistingOnPolicyUpdate.
+      webhookTimeoutSeconds for webhook resilience, schemaValidation,
+      background and admission scope, validationFailureAction and
+      emitWarning at the policy level, and rule-level controls such as
+      applyRules, generateExisting, and mutateExistingOnPolicyUpdate,
+      including how to backfill existing resources safely.
 
     content:
       - type: reading
@@ -194,80 +249,449 @@ modules:
         path: sections/section-030/README.md
 
       - type: reading
-        title: "Module 1: Policy-Level Settings: failurePolicy, Timeouts & Schema Validation"
+        title: "Policy-Level Settings: failurePolicy, Timeouts & Schema Validation"
         path: sections/section-030/module-01/course.md
-
       - type: reading
-        title: "Module 1.1: failurePolicy & webhookTimeoutSeconds"
+        title: "failurePolicy & webhookTimeoutSeconds"
         path: sections/section-030/module-01/course-01-failurepolicy-and-webhooktimeoutseconds.md
-
       - type: reading
-        title: "Module 1.2: schemaValidation & Policy-wide background"
+        title: "schemaValidation & Policy-wide background"
         path: sections/section-030/module-01/course-02-schemavalidation-and-policy-wide-background.md
-
+      - type: reading
+        title: "admission, validationFailureAction & emitWarning"
+        path: sections/section-030/module-01/course-03-admission-validationfailureaction-and-emitwarning.md
       - type: reading
         title: Question
         path: sections/section-030/module-01/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-030/module-01/labs/lab-01/solution.md
-
       - type: lab
         title: "failurePolicy & Timeout Tuning Lab"
         path: sections/section-030/module-01/labs/lab-01
         difficulty: intermediate
+        estimated_duration: 20m
+        topic: policy-settings
+        task_kind: build
+        tags: [kyverno, failurepolicy, webhooktimeoutseconds, enforce, admission-webhook, clusterpolicy]
+        learning_goals:
+          - Write two ClusterPolicies that differ only in failurePolicy (Fail and Ignore) with webhookTimeoutSeconds 5
+          - Prove both policies enforce the same label rule while Kyverno is healthy
+          - Leave the Kyverno admission controller healthy after an outage experiment
+        resources:
+          - name: "Kyverno policy settings"
+            url: https://kyverno.io/docs/writing-policies/policy-settings/
+          - name: "Kubernetes admission webhooks"
+            url: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+      - type: reading
+        title: Summary
+        path: sections/section-030/module-01/course-04-summary.md
 
       - type: reading
-        title: "Module 2: Rule-Level Settings: applyRules, generateExisting & mutateExistingOnPolicyUpdate"
+        title: "Rule-Level Settings: applyRules, generateExisting & mutateExistingOnPolicyUpdate"
         path: sections/section-030/module-02/course.md
-
       - type: reading
-        title: "Module 2.1: applyRules: All vs One"
+        title: "applyRules: All vs One"
         path: sections/section-030/module-02/course-01-applyrules-all-vs-one.md
-
       - type: reading
-        title: "Module 2.2: generateExisting & mutateExistingOnPolicyUpdate"
+        title: "generateExisting & mutateExistingOnPolicyUpdate"
         path: sections/section-030/module-02/course-02-generateexisting-and-mutateexistingonpolicyupdate.md
-
+      - type: reading
+        title: "Backfilling Safely: Permissions, synchronize & Rollout"
+        path: sections/section-030/module-02/course-03-backfilling-safely.md
       - type: reading
         title: Question
         path: sections/section-030/module-02/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-030/module-02/labs/lab-01/solution.md
-
       - type: lab
         title: "Rule-Level Settings Lab"
         path: sections/section-030/module-02/labs/lab-01
         difficulty: intermediate
-
+        estimated_duration: 25m
+        topic: policy-settings
+        task_kind: build
+        tags: [kyverno, generateexisting, applyrules, generate, mutate, networkpolicy, background-controller]
+        learning_goals:
+          - Backfill a default-deny NetworkPolicy into namespaces that existed before the policy with generateExisting
+          - Prove forward generation still works for a namespace created later
+          - Use applyRules One with ordered mutate rules so each namespace gets exactly one cost-center label
+        resources:
+          - name: "Kyverno generate rules"
+            url: https://kyverno.io/docs/writing-policies/generate/
+          - name: "Kyverno policy settings"
+            url: https://kyverno.io/docs/writing-policies/policy-settings/
       - type: reading
-        title: "Section 030 Knowledge Check: Common Policy Settings"
-        path: sections/section-030/quiz.md
+        title: Summary
+        path: sections/section-030/module-02/course-04-summary.md
 
       - type: reading
         title: Question
         path: sections/section-030/capstone/labs/lab-01/question.md
-
-      - type: reading
-        title: Solution Walkthrough
-        path: sections/section-030/capstone/labs/lab-01/solution.md
-
       - type: lab
         title: "Common Policy Settings Capstone Lab"
         path: sections/section-030/capstone/labs/lab-01
         difficulty: advanced
+        estimated_duration: 30m
+        topic: policy-settings
+        task_kind: build
+        tags: [kyverno, failurepolicy, webhooktimeoutseconds, generateexisting, applyrules, capstone]
+        learning_goals:
+          - Enforce resource limits with a tuned failurePolicy and webhookTimeoutSeconds
+          - Backfill an audit ConfigMap into a pre-existing namespace with generateExisting
+          - Apply priority-ordered tier labeling with applyRules One
+        resources:
+          - name: "Kyverno policy settings"
+            url: https://kyverno.io/docs/writing-policies/policy-settings/
+          - name: "Kyverno generate rules"
+            url: https://kyverno.io/docs/writing-policies/generate/
+      - type: quiz
+        title: "Knowledge Check: Common Policy Settings"
+        path: sections/section-030/quiz.yaml
+        pass_score: 70
 
   - id: module-040
-    title: "KCA Applying Policies Certification Quiz"
+    title: "Section 040: Applying Policy Types"
     description: >
-      A comprehensive, scenario-based final assessment covering all 6
-      modules across the 3 Applying Policies sections, simulating
-      exam-style pressure.
+      Apply the four everyday Kyverno policy types: mutate rules with
+      patchStrategicMerge and patchesJson6902, validate rules with pattern
+      and deny, generate rules with synchronize and clone, and cleanup
+      policies, plus a reading on image verification with verifyImages.
+      The section closes with a capstone that combines them.
 
     content:
       - type: reading
-        title: "Final Domain Certification Quiz"
-        path: sections/final-domain-quiz.md
+        title: Section Overview
+        path: sections/section-040/README.md
+
+      - type: reading
+        title: "Module 1: Applying Validate And Mutate Policies"
+        path: sections/section-040/module-01/course.md
+
+      - type: reading
+        title: "Module 1.1: Mutate Rules With patchStrategicMerge And patchesJson6902"
+        path: sections/section-040/module-01/course-01-mutate-rules.md
+
+      - type: reading
+        title: "Module 1.2: Validate Rules, Deny Rules And Ordering"
+        path: sections/section-040/module-01/course-02-validate-rules-and-order.md
+
+      - type: reading
+        title: Question
+        path: sections/section-040/module-01/labs/lab-01/question.md
+
+      - type: lab
+        title: "Validate And Mutate Policies Lab"
+        path: sections/section-040/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: policy-types
+        task_kind: build
+        tags: [kyverno, mutate, validate, patchStrategicMerge, patchesJson6902, deny, pattern]
+        learning_goals:
+          - Add default labels and a securityContext default with a merge patch and a JSON patch
+          - Reject pods without an owner label or with a latest image tag
+          - Deny the deletion of protected ConfigMaps with a deny rule on request.oldObject
+        resources:
+          - name: "Kyverno mutate rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/mutate/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/validate/
+
+      - type: reading
+        title: Summary
+        path: sections/section-040/module-01/course-03-summary.md
+
+      - type: reading
+        title: "Module 2: Applying Generate And Cleanup Policies"
+        path: sections/section-040/module-02/course.md
+
+      - type: reading
+        title: "Module 2.1: Generate Rules, Synchronize And Clone"
+        path: sections/section-040/module-02/course-01-generate-rules.md
+
+      - type: reading
+        title: "Module 2.2: Cleanup Policies And The Cleanup Controller"
+        path: sections/section-040/module-02/course-02-cleanup-policies.md
+
+      - type: reading
+        title: "Module 2.3: Image Verification Overview"
+        path: sections/section-040/module-02/course-03-image-verification-overview.md
+
+      - type: reading
+        title: Question
+        path: sections/section-040/module-02/labs/lab-01/question.md
+
+      - type: lab
+        title: "Generate And Cleanup Policies Lab"
+        path: sections/section-040/module-02/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: policy-types
+        task_kind: build
+        tags: [kyverno, generate, cleanup, synchronize, clone, rbac, background-controller]
+        learning_goals:
+          - Give the background and cleanup controllers the RBAC they need through aggregated ClusterRoles
+          - Generate a quota, a network policy and a cloned ConfigMap for labelled namespaces
+          - Delete expired ConfigMaps on a schedule with a ClusterCleanupPolicy
+        resources:
+          - name: "Kyverno generate rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/generate/
+          - name: "Kyverno cleanup policies"
+            url: https://kyverno.io/docs/policy-types/cleanup-policy/
+
+      - type: reading
+        title: Summary
+        path: sections/section-040/module-02/course-04-summary.md
+
+      - type: reading
+        title: Question
+        path: sections/section-040/capstone/labs/lab-01/question.md
+
+      - type: lab
+        title: "Policy Types Capstone Lab"
+        path: sections/section-040/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 45m
+        topic: policy-types
+        task_kind: build
+        tags: [kyverno, generate, mutate, validate, cleanup, namespaceSelector, capstone]
+        learning_goals:
+          - Onboard a namespace with generated defaults and the RBAC that generation needs
+          - Default and guard pods with one mutate and one validate policy
+          - Expire old ConfigMaps with a cleanup policy and prove the result with kubectl
+        resources:
+          - name: "Kyverno policy types"
+            url: https://kyverno.io/docs/policy-types/
+
+      - type: quiz
+        title: "Knowledge Check: Applying Policy Types"
+        path: sections/section-040/quiz.yaml
+        pass_score: 70
+
+  - id: module-050
+    title: "Section 050: Policy Reports & Results"
+    description: >
+      Teaches the reader to read PolicyReport and ClusterPolicyReport
+      objects, to know where each result comes from (admission versus
+      background scan), how results age when resources or policies are
+      deleted or exempted, and how to use clean reports as the gate
+      before flipping an Audit policy to Enforce.
+
+    content:
+      - type: reading
+        title: Section Overview
+        path: sections/section-050/README.md
+
+      - type: reading
+        title: "Reading PolicyReport and ClusterPolicyReport"
+        path: sections/section-050/module-01/course.md
+      - type: reading
+        title: "Anatomy of a Report"
+        path: sections/section-050/module-01/course-01-anatomy-of-a-report.md
+      - type: reading
+        title: "Querying Reports with kubectl and jq"
+        path: sections/section-050/module-01/course-02-querying-reports.md
+      - type: reading
+        title: Question
+        path: sections/section-050/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Read PolicyReports and ClusterPolicyReports Lab"
+        path: sections/section-050/module-01/labs/lab-01
+        difficulty: beginner
+        estimated_duration: 20m
+        topic: policy-reports
+        task_kind: investigation
+        tags: [kyverno, policyreport, clusterpolicyreport, wgpolicyk8s, jq, audit]
+        learning_goals:
+          - Tell PolicyReport from ClusterPolicyReport and find the right one for a resource
+          - Count pass and fail results of one policy across reports
+          - Query results with kubectl and jq without depending on the report layout
+        resources:
+          - name: "Kyverno policy reports"
+            url: https://kyverno.io/docs/policy-reports/
+          - name: "Policy report API (wgpolicyk8s.io)"
+            url: https://github.com/kubernetes-sigs/wg-policy-prototypes/tree/master/policy-report
+      - type: reading
+        title: Summary
+        path: sections/section-050/module-01/course-03-summary.md
+
+      - type: reading
+        title: "Where Results Come From and How They Age"
+        path: sections/section-050/module-02/course.md
+      - type: reading
+        title: "Two Sources: Admission and Background Scan"
+        path: sections/section-050/module-02/course-01-admission-and-background-scan.md
+      - type: reading
+        title: "Lifecycle: Deleted Resources, Deleted Policies and Skipped Results"
+        path: sections/section-050/module-02/course-02-lifecycle-and-skipped-results.md
+      - type: reading
+        title: "Reports as a Rollout Gate"
+        path: sections/section-050/module-02/course-03-reports-as-a-rollout-gate.md
+      - type: reading
+        title: Question
+        path: sections/section-050/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Use Reports as a Rollout Gate Lab"
+        path: sections/section-050/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: policy-reports
+        task_kind: migration
+        tags: [kyverno, policyreport, background-scan, audit, enforce, rollout]
+        learning_goals:
+          - Remediate violators and wait for the reports to turn clean before enforcing
+          - Flip a policy from Audit to Enforce and prove a rejection and an admission
+          - Explain how results follow a fixed or deleted resource
+        resources:
+          - name: "Kyverno policy reports"
+            url: https://kyverno.io/docs/policy-reports/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/writing-policies/validate/
+      - type: reading
+        title: Summary
+        path: sections/section-050/module-02/course-04-summary.md
+
+      - type: reading
+        title: Question
+        path: sections/section-050/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Policy Reports & Results Capstone"
+        path: sections/section-050/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 30m
+        topic: policy-reports
+        task_kind: build
+        tags: [kyverno, policyreport, clusterpolicyreport, audit, enforce, rollout-gate]
+        learning_goals:
+          - Read namespaced and cluster-scoped reports and record the findings
+          - Remediate every violator and confirm both report kinds are clean
+          - Move two policies to Enforce and prove the rejections
+        resources:
+          - name: "Kyverno policy reports"
+            url: https://kyverno.io/docs/policy-reports/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/writing-policies/validate/
+      - type: quiz
+        title: "Knowledge Check: Policy Reports & Results"
+        path: sections/section-050/quiz.yaml
+        pass_score: 70
+
+  - id: module-060
+    title: "Kyverno CLI: apply & test"
+    description: >
+      Makes the reader able to prove Kyverno policies before they reach a
+      cluster: kyverno apply on policy and resource files (exit codes,
+      --audit-warn, variables, mutate output, --cluster, --policy-report and
+      where CLI results differ from live results) and kyverno test with
+      kyverno-test.yaml files kept in git and run in CI.
+
+    content:
+      - type: reading
+        title: Section Overview
+        path: sections/section-060/README.md
+
+      - type: reading
+        title: "Kyverno CLI: apply"
+        path: sections/section-060/module-01/course.md
+      - type: reading
+        title: "Running kyverno apply On Files"
+        path: sections/section-060/module-01/course-01-running-kyverno-apply-on-files.md
+      - type: reading
+        title: "Variables And Mutate Output"
+        path: sections/section-060/module-01/course-02-variables-and-mutate-output.md
+      - type: reading
+        title: "Cluster Mode, Reports And Where The CLI Differs"
+        path: sections/section-060/module-01/course-03-cluster-mode-reports-and-differences.md
+      - type: reading
+        title: Question
+        path: sections/section-060/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Prove Policies Offline With kyverno apply Lab"
+        path: sections/section-060/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: policy-tooling
+        task_kind: build
+        tags: [kyverno, kyverno-cli, kyverno-apply, audit-warn, values-file, mutate, exit-codes, policy-as-code]
+        learning_goals:
+          - Write validate, audit and mutate policies and prove them with kyverno apply, using exit codes and --audit-warn
+          - Supply a variable with a values file and save mutated output with -o
+          - Scan a live cluster with --cluster and apply the proven policy
+        resources:
+          - name: "Kyverno CLI apply"
+            url: https://kyverno.io/docs/kyverno-cli/usage/apply/
+          - name: "Kyverno CLI"
+            url: https://kyverno.io/docs/kyverno-cli/
+      - type: reading
+        title: Summary
+        path: sections/section-060/module-01/course-04-summary.md
+
+      - type: reading
+        title: "Kyverno CLI: test"
+        path: sections/section-060/module-02/course.md
+      - type: reading
+        title: "The kyverno-test.yaml Format"
+        path: sections/section-060/module-02/course-01-the-kyverno-test-yaml-format.md
+      - type: reading
+        title: "Test Layout In Git And CI"
+        path: sections/section-060/module-02/course-02-test-layout-in-git-and-ci.md
+      - type: reading
+        title: "Detailed Results And kyverno jp"
+        path: sections/section-060/module-02/course-03-detailed-results-and-jp.md
+      - type: reading
+        title: Question
+        path: sections/section-060/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Write And Run Policy Tests With kyverno test Lab"
+        path: sections/section-060/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: policy-tooling
+        task_kind: build
+        tags: [kyverno, kyverno-cli, kyverno-test, patched-resources, ci, policy-as-code]
+        learning_goals:
+          - Write kyverno-test.yaml files with pass and fail results and a mutate test with patchedResources
+          - Write a CI script that runs kyverno test and prove that a broken policy fails it
+          - Apply the tested policy to the cluster
+        resources:
+          - name: "Kyverno CLI test"
+            url: https://kyverno.io/docs/kyverno-cli/usage/test/
+          - name: "Kyverno CLI"
+            url: https://kyverno.io/docs/kyverno-cli/
+      - type: reading
+        title: Summary
+        path: sections/section-060/module-02/course-04-summary.md
+
+      - type: reading
+        title: Question
+        path: sections/section-060/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Ship A Policy Through apply, test And CI Capstone"
+        path: sections/section-060/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: policy-tooling
+        task_kind: build
+        tags: [kyverno, kyverno-cli, kyverno-apply, kyverno-test, audit-warn, ci, policy-as-code]
+        learning_goals:
+          - Prove a registry restriction policy with kyverno apply and its exit codes
+          - Lock the result in with a kyverno test file and a CI script
+          - Scan the existing cluster with --cluster and apply the policy live
+        resources:
+          - name: "Kyverno CLI"
+            url: https://kyverno.io/docs/kyverno-cli/
+          - name: "Kyverno validate rules"
+            url: https://kyverno.io/docs/policy-types/cluster-policy/validate/
+      - type: quiz
+        title: "Knowledge Check: Kyverno CLI: apply & test"
+        path: sections/section-060/quiz.yaml
+        pass_score: 70
+
+  - id: module-070
+    title: "KCA Applying Policies Certification Quiz"
+    description: >
+      A comprehensive, scenario-based final assessment covering all 12
+      modules across the 6 Applying Policies sections, simulating
+      exam-style pressure.
+
+    content:
+      - type: quiz
+        title: "Final Knowledge Check: Applying Policies"
+        path: sections/final-domain-quiz.yaml
+        pass_score: 70

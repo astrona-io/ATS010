@@ -1,0 +1,252 @@
+# Knowledge check for section 010. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-010
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-010
+  title: "Applying Policy in Cluster"
+questions:
+  - id: ats010-010-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain that the cluster only enforces the policy that was last applied"
+    source_readings:
+      - sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+    prompt: |-
+      You edit the `match` block of a `ClusterPolicy` in your Git working copy to fix a bug, but you forget to run `kubectl apply -f`. Which version does the cluster enforce?
+    options:
+      - id: a
+        text: "The fixed version, because Kyverno watches the filesystem of your machine."
+        explanation: "Kyverno runs in the cluster and has no access to files on your machine."
+      - id: b
+        text: "Neither version, because Kyverno disables a policy whose source file has changed."
+        explanation: "Kyverno has no link between a policy object and a local file."
+      - id: c
+        text: "The version that was last applied to the cluster. The local edit has no effect until you apply it."
+        explanation: "Correct. A policy is an object stored in the cluster. Only an apply, create or edit changes it."
+      - id: d
+        text: "Both versions, merged field by field."
+        explanation: "No merge happens until you run `kubectl apply`, and then the new file replaces the changed fields."
+    correct_option: c
+    explanation: "A `ClusterPolicy` is a resource stored in the cluster. The cluster reflects what was last applied, not what your local file says."
+
+  - id: ats010-010-q02
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Check a policy change with Kyverno's policy webhook before it is stored"
+    source_readings:
+      - sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+    prompt: |-
+      A pipeline must find out whether Kyverno will accept a changed policy file, and must not store anything in the cluster. Which command does this?
+    options:
+      - id: a
+        text: "`kubectl apply --dry-run=server -f policy.yaml`"
+        explanation: "Correct. The request goes through the API server and admission, including Kyverno's policy webhook, and nothing is stored."
+      - id: b
+        text: "`kubectl apply --dry-run=client -f policy.yaml`"
+        explanation: "A client dry run never contacts the cluster, so Kyverno's checks do not run."
+      - id: c
+        text: "`kubectl get clusterpolicy -o yaml`"
+        explanation: "This command only shows what is already stored."
+      - id: d
+        text: "`kubectl explain clusterpolicy.spec`"
+        explanation: "This command shows the field list of the installed version. It does not check your file."
+    correct_option: a
+    explanation: "Only a server-side dry run sends the request through Kyverno's policy webhook. `kubectl diff -f` is another safe check: it exits with 1 when the cluster differs from the file."
+
+  - id: ats010-010-q03
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "State what Audit mode does with a violating resource"
+    source_readings:
+      - sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
+    prompt: |-
+      A `ClusterPolicy` with `validationFailureAction: Audit` is live. A user creates a Pod that breaks its rule. What is true right after the request?
+    options:
+      - id: a
+        text: "The API server rejects the Pod and nothing is created."
+        explanation: "This describes `Enforce`."
+      - id: b
+        text: "The Pod is created and Kyverno deletes it a few seconds later."
+        explanation: "Kyverno never deletes a resource because of a `validate` result."
+      - id: c
+        text: "The Pod is created and Kyverno mutates it until it passes."
+        explanation: "A `validate` rule never changes a resource. Changing resources is the job of `mutate` rules."
+      - id: d
+        text: "The Pod is created and the violation is recorded as a result in a `PolicyReport`."
+        explanation: "Correct. `Audit` admits the request and records the violation."
+    correct_option: d
+    explanation: "`Audit` admits the resource and records the violation in a `PolicyReport` or `ClusterPolicyReport`."
+
+  - id: ats010-010-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Stage an Enforce rollout per namespace with validationFailureActionOverrides"
+    source_readings:
+      - sections/section-010/module-01/course-02-enforce-vs-audit-at-apply-time.md
+    prompt: |-
+      The `payments` team has fixed every violation of a new rule. Other namespaces still have many. You want `Enforce` in `payments` and `Audit` everywhere else, without two copies of the policy. What do you use?
+    options:
+      - id: a
+        text: "`spec.background: false` on the policy."
+        explanation: "`background` controls the scan of existing resources, not the action per namespace."
+      - id: b
+        text: "`spec.validationFailureActionOverrides` with `action: Enforce` and `namespaces: [payments]`, and `validationFailureAction: Audit` as the default."
+        explanation: "Correct. The overrides list changes the action for the named namespaces, and the top-level value applies to the rest."
+      - id: c
+        text: "Two `ClusterPolicy` objects with the same name, one per namespace."
+        explanation: "Two objects cannot share a name, and one policy can already do this."
+      - id: d
+        text: "A `PolicyException` for every namespace except `payments`."
+        explanation: "An exception exempts resources from a rule. It does not change the failure action."
+    correct_option: b
+    explanation: "`validationFailureActionOverrides` sets the action per namespace or namespace selector inside one policy."
+
+  - id: ats010-010-q05
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Describe what a background scan does to resources that already exist"
+    source_readings:
+      - sections/section-010/module-02/course-01-background-scanning-already-existing-resources.md
+    prompt: |-
+      A policy with `background: true` and `validationFailureAction: Enforce` is applied to a namespace that has three running Deployments that break its rule. What happens to the three Deployments?
+    options:
+      - id: a
+        text: "Kyverno deletes them at the next scan."
+        explanation: "A scan never deletes anything."
+      - id: b
+        text: "Kyverno changes them so that they pass."
+        explanation: "Only `mutate` rules change resources, and background scanning applies to `validate` rules."
+      - id: c
+        text: "They keep running unchanged, and the background scan records failing results for them in `PolicyReport` objects."
+        explanation: "Correct. A scan only reports, whatever the failure action is."
+      - id: d
+        text: "They are unaffected and not reported, because `Enforce` only applies at admission."
+        explanation: "`background: true` is what produces results for existing resources."
+    correct_option: c
+    explanation: "Background scanning re-evaluates existing resources against `validate` rules and reports. It does not block, delete or change them."
+
+  - id: ats010-010-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Recognise autogen rules and where Kyverno 1.13 stores them"
+    source_readings:
+      - sections/section-010/module-02/course-02-autogen-for-pod-controllers.md
+    prompt: |-
+      You wrote a rule that matches `Pod` only. After you apply it, `kubectl get clusterpolicy <name> -o yaml` shows extra rules whose names start with `autogen-`, and creating a non-compliant Deployment is rejected. What explains this?
+    options:
+      - id: a
+        text: "Autogen. Kyverno copied the rule to the controllers that own a Pod template, such as Deployment, and moved the pattern paths to the template."
+        explanation: "Correct. In Kyverno 1.13 the generated rules are in `status.autogen.rules`."
+      - id: b
+        text: "A bug. A policy must only contain the rules you wrote."
+        explanation: "Autogen is a documented feature."
+      - id: c
+        text: "A retry. The first apply of the policy failed validation."
+        explanation: "A policy that fails validation is not created at all."
+      - id: d
+        text: "Stale data from an older policy with the same name."
+        explanation: "Kyverno builds the generated rules from the current policy on every change."
+    correct_option: a
+    explanation: "A rule that matches `Pod` gets `autogen-` rules for Deployment, DaemonSet, StatefulSet, Job and CronJob, so the controller object is checked at admission."
+
+  - id: ats010-010-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Turn autogen off for a policy with the autogen-controllers annotation"
+    source_readings:
+      - sections/section-010/module-02/course-02-autogen-for-pod-controllers.md
+    prompt: |-
+      A rule only makes sense on a bare Pod, and you do not want Kyverno to create rules for Deployments. What do you do?
+    options:
+      - id: a
+        text: "Set `background: false` on the rule."
+        explanation: "`background` controls the re-check of existing resources, not autogen."
+      - id: b
+        text: "Add `exclude` entries for Deployment, StatefulSet and DaemonSet to the rule."
+        explanation: "The rule never matched those kinds, so excluding them changes nothing."
+      - id: c
+        text: "Delete the policy and create a namespaced `Policy` instead."
+        explanation: "Autogen works for namespaced policies as well."
+      - id: d
+        text: "Set the annotation `pod-policies.kyverno.io/autogen-controllers` to `none` on the policy."
+        explanation: "Correct. The value `none` disables autogen, so the rule applies to Pods exactly as written."
+    correct_option: d
+    explanation: "The annotation `pod-policies.kyverno.io/autogen-controllers` restricts the controller list, and the value `none` turns autogen off."
+
+  - id: ats010-010-q08
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Diagnose a PolicyException that has no effect"
+    source_readings:
+      - sections/section-010/module-02/course-03-policyexceptions-in-depth.md
+    prompt: |-
+      You create a valid `PolicyException` for a migration Job. The API server accepts it, but the Job is still blocked by the rule. Nothing else was changed in the cluster. What is the most likely cause?
+    options:
+      - id: a
+        text: "A PolicyException needs 24 hours before it takes effect."
+        explanation: "There is no such delay."
+      - id: b
+        text: "The feature is off by default. The admission controller needs `--enablePolicyException=true`, and `--exceptionNamespace` must name the namespace of the exception."
+        explanation: "Correct. Without the flag the object is a valid resource but is ignored. An exception in another namespace is ignored too."
+      - id: c
+        text: "A PolicyException can only exempt Pods, never Jobs."
+        explanation: "The exception `match` can select any kind that the rule applies to."
+      - id: d
+        text: "The exception must always be created in the `kyverno` namespace."
+        explanation: "It must be in the namespace that `--exceptionNamespace` names, which can be the workload's own namespace."
+    correct_option: b
+    explanation: "PolicyExceptions are opt-in. Enable them with the admission controller arguments and create the exception in the allowed namespace."
+
+  - id: ats010-010-q09
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Choose between a Policy and a ClusterPolicy by scope"
+    source_readings:
+      - sections/section-010/module-01/course-01-applying-clusterpolicy-and-policy-with-kubectl.md
+    prompt: |-
+      The `payments` team owns its namespace and wants a rule that can never affect another namespace, and must be able to manage it without cluster-wide rights. Which object fits?
+    options:
+      - id: a
+        text: "A `ClusterPolicy` with `namespaces: [payments]` in the match."
+        explanation: "This works, but the object is cluster-scoped, so managing it needs cluster-level rights."
+      - id: b
+        text: "A `ClusterPolicy` with no `match`."
+        explanation: "A rule needs a `match` block, and this would not limit the scope."
+      - id: c
+        text: "A `Policy` created in the `payments` namespace."
+        explanation: "Correct. A `Policy` is namespaced and only checks resources in its own namespace."
+      - id: d
+        text: "A `PolicyReport` in the `payments` namespace."
+        explanation: "A `PolicyReport` holds results. It does not contain rules."
+    correct_option: c
+    explanation: "A `Policy` lives in one namespace and only ever checks resources there. It cannot match cluster-scoped kinds."
+
+  - id: ats010-010-q10
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Write a PolicyException that also covers the autogen rule for a Deployment"
+    source_readings:
+      - sections/section-010/module-02/course-03-policyexceptions-in-depth.md
+    prompt: |-
+      PolicyExceptions are enabled. The policy `require-limits` has the rule `check-limits` that matches `Pod`. You write an exception that lists `ruleNames: [check-limits]` and matches the Deployment `legacy-worker`. Updating `legacy-worker` is still rejected. Why?
+    options:
+      - id: a
+        text: "The Deployment is checked by the generated rule `autogen-check-limits`, which the exception does not name."
+        explanation: "Correct. Autogen creates a separate rule for the Deployment. The exception must list that rule name too."
+      - id: b
+        text: "Exceptions can only exempt Pods and never Deployments."
+        explanation: "The `match` of an exception can select Deployments."
+      - id: c
+        text: "`ruleNames` is ignored, and the exception needs a `policyName` only."
+        explanation: "`ruleNames` limits the exception to the named rules."
+      - id: d
+        text: "Exceptions only work after the policy is changed to `Audit`."
+        explanation: "Exceptions work with `Enforce` policies. That is their purpose."
+    correct_option: a
+    explanation: "The check for a Deployment runs under the autogen rule name, so the exception must list both `check-limits` and `autogen-check-limits`."

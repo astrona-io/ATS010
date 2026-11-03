@@ -1,0 +1,253 @@
+# Knowledge check for section 050. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats010-050
+course_id: ATS010
+exam_code: KCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-050
+  title: "Policy Reports & Results"
+questions:
+  - id: ats010-050-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Choose the report kind that holds the result for a given resource"
+    source_readings:
+      - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+    prompt: |-
+      A `ClusterPolicy` named `require-team` validates both Pods and Namespaces. An engineer looks for the verdict about the Namespace `payments` with `kubectl get policyreport -A` and finds nothing. Why?
+    options:
+      - id: a
+        text: "Because `require-team` is a `ClusterPolicy`, all its results go to `ClusterPolicyReport` objects."
+        explanation: "The kind of the policy does not choose the report kind. The scope of the checked resource does."
+      - id: b
+        text: "Because Namespaces never produce results."
+        explanation: "Namespaces can be validated like any other resource and produce results."
+      - id: c
+        text: "Because the report was deleted when the policy was applied."
+        explanation: "Applying a policy does not delete reports."
+      - id: d
+        text: "Because a Namespace is cluster-scoped, so its result is in a `ClusterPolicyReport`, which `kubectl get policyreport` does not list."
+        explanation: "Correct. Cluster-scoped resources are reported in `ClusterPolicyReport`, namespaced resources in `PolicyReport`."
+    correct_option: d
+    explanation: "The scope of the checked resource decides the report kind. A Namespace is cluster-scoped, so its verdict is in `kubectl get clusterpolicyreport`."
+
+  - id: ats010-050-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Name the API group and the result values of a policy report"
+    source_readings:
+      - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+    prompt: |-
+      You write a script that prints the `result` field of every entry in a report's `results` list. Which set of values may it see?
+    options:
+      - id: a
+        text: "`pass`, `fail`, `warn`, `error` and `skip`"
+        explanation: "Correct. These are the five values of the `wgpolicyk8s.io` result field."
+      - id: b
+        text: "`allowed`, `denied` and `audited`"
+        explanation: "These are not result values."
+      - id: c
+        text: "`success` and `failure` only"
+        explanation: "The values are `pass` and `fail`, and there are three more."
+      - id: d
+        text: "`Enforce`, `Audit` and `Ignore`"
+        explanation: "`Enforce` and `Audit` are values of `validationFailureAction`, not of a result."
+    correct_option: a
+    explanation: "A result is one of `pass`, `fail`, `warn`, `error` or `skip`. An `error` means the rule could not be evaluated."
+
+  - id: ats010-050-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Read the summary counters of a report correctly"
+    source_readings:
+      - sections/section-050/module-01/course-01-anatomy-of-a-report.md
+    prompt: |-
+      A colleague reads `summary.fail: 0` from one PolicyReport in `payments` and says the whole namespace is clean. In your cluster, reports are generally one per resource. What is wrong with the conclusion?
+    options:
+      - id: a
+        text: "Nothing; the summary always covers the whole namespace."
+        explanation: "The counters cover only the results of that one report."
+      - id: b
+        text: "The counters belong to that single report, so other reports in the namespace may still contain failures. All reports must be totalled."
+        explanation: "Correct. Each `summary` tallies its own `results`; the namespace total is the sum over all reports."
+      - id: c
+        text: "`summary.fail` counts resources, not results."
+        explanation: "It counts results of that report, and a resource failing two rules counts twice."
+      - id: d
+        text: "A `fail` is only recorded in the `ClusterPolicyReport`."
+        explanation: "Failures of namespaced resources are in `PolicyReport` objects."
+    correct_option: b
+    explanation: "A `summary` describes one report. Total the counters of every report in the namespace, or count the results with `jq`."
+
+  - id: ats010-050-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Write a version-tolerant query that lists failing resources"
+    source_readings:
+      - sections/section-050/module-01/course-02-querying-reports.md
+    prompt: |-
+      You must write a script for several clusters that run different Kyverno versions. It lists the name of every failing resource from `kubectl get policyreport -A -o json`. Which approach is the most robust?
+    options:
+      - id: a
+        text: "Read `.items[0].results[0].resources[0].name` only."
+        explanation: "This reads one result of one report and assumes a `resources` list."
+      - id: b
+        text: "Parse the human-readable output of `kubectl get policyreport -A` with `awk`."
+        explanation: "The columns differ between versions."
+      - id: c
+        text: "Download JSON and select results with `result == \"fail\"`, reading the name from `scope.name` and falling back to `resources[0].name`."
+        explanation: "Correct. It works for per-resource and aggregated layouts and for results with or without a `resources` list."
+      - id: d
+        text: "Select reports by a Kyverno label whose name you copied from one cluster."
+        explanation: "Label keys are a version detail and may differ."
+    correct_option: c
+    explanation: "Walk `items[]` and `results[]?`, filter on `result`, and read the name from `scope` with a fallback to `resources`."
+
+  - id: ats010-050-q05
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain why a freshly applied policy may show no results yet"
+    source_readings:
+      - sections/section-050/module-02/course-01-admission-and-background-scan.md
+    prompt: |-
+      You apply a new `Audit` policy to a cluster that has run for a year. Ten seconds later `kubectl get policyreport -A` shows nothing about the old resources. What is the correct reading?
+    options:
+      - id: a
+        text: "The old resources are compliant, because there are no results."
+        explanation: "An empty answer shortly after a change can mean nothing has been written yet."
+      - id: b
+        text: "The policy cannot check old resources, because admission control only sees new requests."
+        explanation: "The background scan checks existing resources when `background` is true."
+      - id: c
+        text: "The reports controller must be restarted before it scans."
+        explanation: "No restart is needed."
+      - id: d
+        text: "Old resources are checked by a background scan and reports are written asynchronously, so wait, and check that the policy is `Ready`, before concluding."
+        explanation: "Correct. Results for pre-existing resources come from the background scan, aggregated by the reports controller."
+    correct_option: d
+    explanation: "Admission has no memory of old resources. The reports controller scans them in the background and aggregates the results, so allow a short wait."
+
+  - id: ats010-050-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "State what Enforce does and does not write to reports"
+    source_readings:
+      - sections/section-050/module-02/course-01-admission-and-background-scan.md
+    prompt: |-
+      A policy runs in `Enforce`. A developer's request to create a violating ConfigMap is rejected. Later, the team checks the reports for that ConfigMap's `fail`. What do they find, and why?
+    options:
+      - id: a
+        text: "A `fail` result, because every violation is reported."
+        explanation: "A rejected request creates no resource, so nothing exists to report on."
+      - id: b
+        text: "A `skip` result, because the request was blocked."
+        explanation: "`skip` means the rule did not apply, not that a request was blocked."
+      - id: c
+        text: "No result, because the resource was never created; the rejection is in the API response and in Kyverno's logs and metrics."
+        explanation: "Correct. Reports describe existing resources, not rejected requests."
+      - id: d
+        text: "An `error` result, because the admission failed."
+        explanation: "`error` means the rule could not be evaluated."
+    correct_option: c
+    explanation: "Reports describe resources that exist. A request blocked by `Enforce` leaves no resource and no report entry."
+
+  - id: ats010-050-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict how results change when a resource is fixed or deleted"
+    source_readings:
+      - sections/section-050/module-02/course-02-lifecycle-and-skipped-results.md
+    prompt: |-
+      A `fail` result names the ConfigMap `legacy-delta`. You add the missing `owner` label to it and, a few seconds later, the report still shows `fail`. What should you do?
+    options:
+      - id: a
+        text: "Edit the report and change `fail` to `pass`."
+        explanation: "Reports are written by Kyverno and overwritten; editing one achieves nothing."
+      - id: b
+        text: "Wait and re-read the reports; the result is refreshed asynchronously, and investigate only if it persists for minutes."
+        explanation: "Correct. The resource changed at once, the report follows through the pipeline."
+      - id: c
+        text: "Delete the policy and apply it again immediately."
+        explanation: "This is unnecessary and removes all results of the policy."
+      - id: d
+        text: "Conclude the fix failed and revert the label."
+        explanation: "A short delay does not prove the fix failed."
+    correct_option: b
+    explanation: "Fix the resource, not the report, and give the pipeline time. A `fail` that persists for several minutes means the fix is wrong or reached the wrong object."
+
+  - id: ats010-050-q08
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Recognise the causes of a skip result and of a missing result"
+    source_readings:
+      - sections/section-050/module-02/course-02-lifecycle-and-skipped-results.md
+    prompt: |-
+      A `PolicyException` exempts the ConfigMap `migration-job-cfg` from a rule, and the `match` of the same rule never selects the ConfigMap `scratch`. What does the report show for each?
+    options:
+      - id: a
+        text: "A `skip` for both, because neither is evaluated."
+        explanation: "A resource not selected by `match` usually produces no result at all."
+      - id: b
+        text: "A `fail` for both until the exception is deleted."
+        explanation: "An exception stops the rule from failing the resource."
+      - id: c
+        text: "A `pass` for both, because neither violates anything."
+        explanation: "`pass` means the resource was evaluated and satisfied the rule."
+      - id: d
+        text: "A `skip` for `migration-job-cfg` that mentions the exception, and usually no result for `scratch`."
+        explanation: "Correct. Exceptions and false preconditions yield `skip`; unselected resources typically yield nothing."
+    correct_option: d
+    explanation: "A matching exception makes the exemption visible as `skip`. A resource that is not selected by `match` usually has no result. Verify the exact behaviour in your own cluster."
+
+  - id: ats010-050-q09
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Apply the Audit to Enforce gate with evidence"
+    source_readings:
+      - sections/section-050/module-02/course-03-reports-as-a-rollout-gate.md
+    prompt: |-
+      An engineer wants to flip `require-owner-label` to `Enforce`. The command `kubectl get policyreport -A` shows nothing, and the engineer concludes the cluster is clean. Which step best protects the rollout?
+    options:
+      - id: a
+        text: "Flip it; an empty report is a green light."
+        explanation: "A rule with a typo in `match` selects nothing and also gives an empty report."
+      - id: b
+        text: "Flip it only in the namespace with the most violations."
+        explanation: "This does not address the lack of evidence."
+      - id: c
+        text: "Delete all reports and wait for new ones."
+        explanation: "This does not add evidence either."
+      - id: d
+        text: "Confirm the policy is `Ready` and that results exist, with zero `fail` and at least one `pass`, before flipping."
+        explanation: "Correct. The gate needs evidence that the policy matched resources and that they comply."
+    correct_option: d
+    explanation: "An empty report can mean nothing matched. Ask for passes as well as the absence of fails, then flip and prove both a rejection and an admission with a server-side dry run."
+
+  - id: ats010-050-q10
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Pick the right mechanism for client warnings, trends and the scan interval"
+    source_readings:
+      - sections/section-050/module-02/course-03-reports-as-a-rollout-gate.md
+      - sections/section-050/module-02/course-01-admission-and-background-scan.md
+    prompt: |-
+      A platform team runs a policy in `Audit`. Developers say they never notice violations when they apply manifests. The team also wants a trend of violations per policy over weeks. A third engineer proposes lowering `--backgroundScanInterval` to one minute to speed this up. What is the best advice?
+    options:
+      - id: a
+        text: "Set `emitWarning` on the policy so that `Audit` failures reach the client as warnings, use Kyverno's Prometheus metrics for the trend, and leave the scan interval alone."
+        explanation: "Correct. `emitWarning` talks to the client, metrics give the trend, and a shorter scan interval only adds load."
+      - id: b
+        text: "Switch every policy to `Enforce` so developers notice."
+        explanation: "This blocks requests instead of informing, and skips the gate."
+      - id: c
+        text: "Lower the interval to one minute and read the reports for the trend."
+        explanation: "Reports are a snapshot of the present, not a history, and each scan evaluates every matching resource."
+      - id: d
+        text: "Read the internal ephemeral reports for the trend."
+        explanation: "They are plumbing, carry one evaluation each and are removed after aggregation."
+    correct_option: a
+    explanation: "Use `emitWarning` for client feedback and metrics for trends. Do not shorten the scan interval to compensate; reports show the present state."

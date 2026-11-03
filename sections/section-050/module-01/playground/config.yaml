@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Reading PolicyReport and ClusterPolicyReport (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts, installs Kyverno v1.13.2 and seeds some resources
+# and policies, then stays running for free exploration. No task, no grading,
+# no `astrona submit`.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-010-playground-050-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+
+# What the learner starts with: Kyverno 1.13.2 with two Audit policies (require-owner-label on ConfigMaps, require-namespace-team on Namespaces), five seeded ConfigMaps in fleet-reports and two labelled Namespaces. Two ConfigMaps and one Namespace violate on purpose. Nothing is Enforce.
+bootstrap:
+  init:
+    - name: prepare
+      description: "Install Kyverno v1.13.2, wait for its controllers and webhooks, then seed the sandbox"
+      type: file
+      source: bootstrap/prepare.sh
+
+teardown:
+  keepCluster: false

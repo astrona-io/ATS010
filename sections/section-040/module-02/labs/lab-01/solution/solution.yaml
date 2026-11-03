@@ -1,0 +1,108 @@
+# Reference solution for the generate and cleanup lab. Applied only by `astrona test`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-background-extra
+  labels:
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+rules:
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["resourcequotas", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-cleanup-configmaps
+  labels:
+    rbac.kyverno.io/aggregate-to-cleanup-controller: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: namespace-defaults
+spec:
+  rules:
+    - name: default-quota
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  fleet-managed: "true"
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: default-quota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              pods: "10"
+    - name: default-deny-ingress
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  fleet-managed: "true"
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-ingress
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress
+    - name: clone-banner
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  fleet-managed: "true"
+      generate:
+        apiVersion: v1
+        kind: ConfigMap
+        name: fleet-banner
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: false
+        clone:
+          namespace: fleet-system
+          name: fleet-banner
+---
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: remove-expired-configmaps
+spec:
+  match:
+    any:
+      - resources:
+          kinds:
+            - ConfigMap
+          namespaces:
+            - scratch
+  conditions:
+    any:
+      - key: "{{ target.metadata.labels.expired || 'false' }}"
+        operator: Equals
+        value: "true"
+  schedule: "* * * * *"

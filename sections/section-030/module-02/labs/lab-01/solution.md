@@ -1,12 +1,19 @@
-# Solution Walkthrough
+# Solution
 
-Follow these steps to author, apply, and prove out both policies:
+> UNTESTED - built from static checks only; not yet booted. Expected results below are described in words, not copied from a real run.
 
----
+Solve this lab on `terminal`. Each step ends with `astrona submit`. Add `--keep` if your CLI version supports it, to keep the lab running after a failed check.
 
-## Step 1: Write the Generate Policy with generateExisting
+```sh
+astrona run --git git@github.com:astrona-io/ATS010.git -c sections/section-030/module-02/labs/lab-01
+```
 
-Create `clone-default-netpol.yaml`:
+Right after the start, all five checks should fail: there is no policy yet.
+
+## Step 1: Write the generate policy with generateExisting
+
+`team-a`, `team-b` and `team-c` exist already. Without `generateExisting: true` the policy would only act on namespaces created later. Create `clone-default-netpol.yaml`:
+
 ```yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -43,33 +50,40 @@ spec:
               - Ingress
 ```
 
----
-
-## Step 2: Apply It and Confirm the Retroactive Backfill
-
 ```sh
 kubectl apply -f clone-default-netpol.yaml
-kubectl get networkpolicy default-deny-ingress -n team-a
-kubectl get networkpolicy default-deny-ingress -n team-b
-kubectl get networkpolicy default-deny-ingress -n team-c
+kubectl wait --for=condition=Ready clusterpolicy/clone-default-netpol --timeout=90s
 ```
-Because `generateExisting: true` is set, all three pre-existing namespaces are backfilled the moment the policy is applied — you don't need to touch them yourself.
 
----
+## Step 2: Check the backfill
 
-## Step 3: Confirm Forward-Going Generation Still Works
+The background controller does the work after the policy is `Ready`, so check a few times:
+
+```sh
+kubectl get networkpolicy default-deny-ingress -A
+```
+
+Expect one entry each in `team-a`, `team-b` and `team-c`, and none in `kube-system`. If nothing appears after a minute, read `kubectl -n kyverno logs deploy/kyverno-background-controller --tail=50`. Then:
+
+```sh
+astrona submit --git git@github.com:astrona-io/ATS010.git -c sections/section-030/module-02/labs/lab-01
+```
+
+`generateexisting-backfill` should pass.
+
+## Step 3: Prove forward generation still works
 
 ```sh
 kubectl create namespace team-d
 kubectl get networkpolicy default-deny-ingress -n team-d
 ```
-`team-d` didn't exist when the policy was applied, so this exercises the ordinary forward-going generate path, not the retroactive backfill.
 
----
+Expect the NetworkPolicy to be there within a few seconds. Submit; `forward-generation` should pass.
 
-## Step 4: Write the applyRules: One Policy
+## Step 4: Write the applyRules: One policy
 
-Create `label-namespace-by-tier.yaml`:
+Create `label-namespace-by-tier.yaml`. The gold rule must come first, because with `One` the first matching rule wins:
+
 ```yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -92,7 +106,6 @@ spec:
           metadata:
             labels:
               cost-center: premium
-
     - name: standard-tier-default
       match:
         any:
@@ -106,35 +119,29 @@ spec:
               cost-center: standard
 ```
 
-Rule order matters here: the specific gold-tier rule must come first so it gets the chance to run before the catch-all.
-
----
-
-## Step 5: Apply It and Trigger the Gold-Tier Path
-
 ```sh
 kubectl apply -f label-namespace-by-tier.yaml
-kubectl label namespace team-a tier=gold
-kubectl get namespace team-a -o jsonpath='{.metadata.labels.cost-center}{"\n"}'
+kubectl wait --for=condition=Ready clusterpolicy/label-namespace-by-tier --timeout=90s
 ```
-Expect `premium`. Because `applyRules: "One"` stops after the first matching rule, `standard-tier-default` never runs against `team-a` even though it would otherwise match every `Namespace`.
 
----
+Submit; `applyrules-one-policy` should pass.
 
-## Step 6: Confirm the Catch-All Path
+## Step 5: Gold tier
+
+```sh
+kubectl label namespace team-a tier=gold
+kubectl get ns team-a -L tier,cost-center
+```
+
+The label change is an update of the namespace, which the mutate rules see. Expect `cost-center` to show `premium`, not `standard`. Submit; `gold-tier-premium` should pass.
+
+## Step 6: Standard tier
 
 ```sh
 kubectl create namespace team-e
-kubectl get namespace team-e -o jsonpath='{.metadata.labels.cost-center}{"\n"}'
+kubectl get ns team-e -L tier,cost-center
 ```
-Expect `standard` — `team-e` has no `tier` label, so it never matches `gold-tier-override`, and falls through to the catch-all rule.
 
----
+Expect no `tier` and `cost-center` showing `standard`, from the catch-all rule. Submit; all five checks should now pass.
 
-## Step 7: Verify Your Configuration
-
-```sh
-kubectl get clusterpolicy clone-default-netpol -o yaml
-kubectl get clusterpolicy label-namespace-by-tier -o yaml
-```
-Confirm `generateExisting: true` and `applyRules: "One"` are set as specified. Once verified, run the local validation suite to pass the lab!
+If `gold-tier-premium` shows `standard`, the rules are in the wrong order or `applyRules` is missing, so both rules ran and the later one overwrote the earlier.

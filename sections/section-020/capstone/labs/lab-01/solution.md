@@ -1,6 +1,6 @@
 # Solution Walkthrough
 
-Follow these steps to author, apply, and prove out the policy:
+Follow these steps to author, apply, and prove out the policy. Checkpoints tell you which `astrona submit` check each step unlocks.
 
 ---
 
@@ -14,7 +14,7 @@ metadata:
   name: require-approved-release
 spec:
   validationFailureAction: Enforce
-  background: true
+  background: false
   rules:
     - name: check-approved-by-annotation
       match:
@@ -27,7 +27,7 @@ spec:
             namespaceSelector:
               matchLabels:
                 env: prod
-            objectSelector:
+            selector:
               matchLabels:
                 channel: stable
             operations:
@@ -46,11 +46,13 @@ spec:
             annotations:
               approved-by: "?*"
 ```
-Every field inside the single `resources` block — `names`, `namespaceSelector`, `objectSelector` — is ANDed together: a Deployment must match the name pattern, live in an `env: prod` namespace, AND carry `channel: stable` to be evaluated at all. `exclude.subjects` then lets `release-bot`'s own writes skip the rule entirely.
+Every field inside the single `resources` block — `names`, `namespaceSelector`, `selector` — is ANDed together: a Deployment must match the name pattern, live in an `env: prod` namespace, AND carry `channel: stable` to be evaluated at all. `operations: [CREATE, UPDATE]` makes the rule hold for the whole life of the Deployment, not only at creation. `exclude.subjects` then lets `release-bot`'s own writes skip the rule entirely, and because `subjects` exists only on admission requests the policy sets `background: false`.
 
 ---
 
 ## Step 2: Apply the Policy
+Checkpoint: `policy-defined` passes after this step.
+
 ```sh
 kubectl apply -f require-approved-release.yaml
 kubectl get clusterpolicy require-approved-release
@@ -59,6 +61,8 @@ kubectl get clusterpolicy require-approved-release
 ---
 
 ## Step 3: Confirm the Block (Normal Identity, store-prod)
+Checkpoint: `in-scope-enforced` passes after this step.
+
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: apps/v1
@@ -89,6 +93,8 @@ Expect the API server to reject this — no `approved-by` annotation.
 ---
 
 ## Step 4: Confirm the Exclude (Impersonated release-bot)
+Checkpoint: `exclude-and-operations` needs this step and Step 5.
+
 ```sh
 kubectl --as=system:serviceaccount:store-prod:release-bot apply -f - <<'EOF'
 apiVersion: apps/v1
@@ -118,7 +124,7 @@ Same missing annotation, but this request's subject is excluded, so the Deployme
 
 ---
 
-## Step 5: Confirm release-canary Is Admitted (objectSelector Excludes It)
+## Step 5: Confirm release-canary Is Admitted (selector Excludes It)
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: apps/v1
@@ -144,11 +150,13 @@ spec:
           image: nginx:alpine
 EOF
 ```
-`channel: beta` does not satisfy `objectSelector.matchLabels: {channel: stable}`, so the rule never sees this Deployment.
+`channel: beta` does not satisfy `selector.matchLabels: {channel: stable}`, so the rule never sees this Deployment.
 
 ---
 
 ## Step 6: Confirm release-app in store-dev Is Admitted (namespaceSelector Excludes It)
+Checkpoint: `each-axis-narrows` and `exercise-objects` pass once Steps 4 to 6 are done.
+
 ```sh
 cat <<'EOF' | kubectl apply -f -
 apiVersion: apps/v1
@@ -178,7 +186,16 @@ EOF
 
 ---
 
-## Step 7: Verify Your Configuration
+## Step 7: Confirm an UPDATE Is In Scope
+Checkpoint: `exclude-and-operations` passes once this and the earlier steps are done.
+```sh
+kubectl label deployment release-canary channel=stable --overwrite -n store-prod --dry-run=server
+```
+The dry-run changes nothing. It is rejected: after the relabel the Deployment is `stable`, in a prod namespace, named `release-*`, and has no `approved-by` annotation. This proves `UPDATE` is in scope.
+
+---
+
+## Step 8: Verify Your Configuration
 ```sh
 kubectl get deployments -n store-prod --show-labels
 kubectl get deployments -n store-dev --show-labels

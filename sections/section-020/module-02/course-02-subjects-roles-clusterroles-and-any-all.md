@@ -5,7 +5,7 @@
 Before OR and AND, be precise about what an entry in `any`/`all` *is*. Each entry is one **filter**, and a filter can hold these fields side by side:
 
 ```yaml
-- resources:            # what the object is (Module 1 + selector + operations)
+- resources:            # what the object is (kinds, names, namespaces, selector, operations)
     kinds: [Pod]
   subjects: [...]       # who is asking (User / Group / ServiceAccount)
   roles: [...]          # who is asking, by namespaced Role
@@ -75,7 +75,7 @@ Given `kinds: [Pod]`, namespace `apps-ns`, Pod labeled `tier=frontend`, requeste
 > ```
 > This means "any Pod, **or** any request at all from `ci-deployer`". The subject filter has no `kinds`, so it selects every resource that service account touches. To express "Pods created by `ci-deployer`", either put `resources` and `subjects` in the **same** filter, or use `all` with the two filters.
 
-`exclude` uses the exact same `any`/`all` structure: an `exclude.any` list carves a resource out of scope if it matches *any* of the listed exclusion filters; an `exclude.all` list carves it out only if it matches *all* of them. And as Module 1 showed, **exclude always wins over match**.
+`exclude` uses the exact same `any`/`all` structure: an `exclude.any` list removes a resource from scope if it matches *any* of the listed exclusion filters; an `exclude.all` list removes it only if it matches *all* of them. And **exclude always wins over match**.
 
 ## `subjects`: matching the requester's identity
 
@@ -105,7 +105,7 @@ The entries in the `subjects` list are ORed: the requester need match only one.
 This is one of the most common real-world uses of `exclude`: a human-facing guardrail (say, "every Pod must set resource limits") shouldn't necessarily block a CI/CD pipeline's automated deploy identity, which may have its own separate review gate upstream. Excluding by `subjects` lets that one identity bypass the rule without weakening it for anyone else.
 
 > [!WARNING]
-> **A subject exclude is a bypass. Treat it like a key**
+> **A subject exclude is a bypass. Protect the excluded identity**
 >
 > Anyone who can authenticate as the excluded identity, or **impersonate** it (the `impersonate` RBAC verb), gets around the rule completely. Keep such exclusions narrow (one named ServiceAccount, not `system:serviceaccounts`), and make sure access to those credentials is itself guarded.
 
@@ -151,7 +151,7 @@ This is one of the most common real-world uses of `exclude`: a human-facing guar
 > kubectl run p1 --image=nginx -n apps-ns --labels=tier=frontend --dry-run=server
 > kubectl --as=system:serviceaccount:apps-ns:ci-deployer run p2 --image=nginx -n apps-ns --labels=tier=frontend --dry-run=server
 > ```
-> The first request (your own identity) is rejected; the second (impersonating the excluded account) is admitted: same manifest, different requester. Leave the policy; Part 3 reuses it.
+> The first request (your own identity) is rejected; the second (impersonating the excluded account) is admitted: same manifest, different requester. Leave the policy in place for the next steps.
 
 ## `roles` / `clusterRoles`: matching by RBAC binding
 

@@ -2,7 +2,7 @@
 
 ## The default: generate and mutate only look forward
 
-A `generate` rule fires when a matching **trigger** resource is admitted, a new `Namespace` being created, for example. That is the mechanism you used in Section 010 to clone a `ConfigMap` or a default-deny `NetworkPolicy` into every namespace. But notice the phrasing: it fires on a trigger resource *being admitted*. By default, a `generate` rule has nothing to say about trigger resources that were already sitting in the cluster before the policy existed. They were admitted long before this policy was applied, so there was no admission event for the rule to react to.
+A `generate` rule fires when a matching **trigger** resource is admitted, a new `Namespace` being created, for example. That is the mechanism that clones a `ConfigMap` or a default-deny `NetworkPolicy` into every namespace. But notice the phrasing: it fires on a trigger resource *being admitted*. By default, a `generate` rule has nothing to say about trigger resources that were already sitting in the cluster before the policy existed. They were admitted long before this policy was applied, so there was no admission event for the rule to react to.
 
 The same forward-only default applies to `mutate` rules: they patch a resource as it is admitted (created or updated), not resources that already exist and are not being touched right now.
 
@@ -73,7 +73,7 @@ Read the YAML piece by piece:
 
 This matters most exactly when you would expect: rolling out a new cluster-wide guardrail onto a cluster that already has dozens of namespaces. Without `generateExisting: true`, the new policy would only ever apply to namespaces created after today, leaving every pre-existing namespace silently uncovered until someone notices and patches them by hand.
 
-The backfill is not instant and not part of an admission request. It is done by the **background controller**, so give it a few seconds, and when it does not happen, look at that controller's logs (`kubectl -n kyverno logs deploy/kyverno-background-controller`) before you suspect the policy. Part 3 returns to this.
+The backfill is not instant and not part of an admission request. It is done by the **background controller**, so give it a few seconds, and when it does not happen, look at that controller's logs (`kubectl -n kyverno logs deploy/kyverno-background-controller`) before you suspect the policy.
 
 ## mutateExistingOnPolicyUpdate - the same idea, for mutate
 
@@ -124,7 +124,7 @@ This is the `mutate` equivalent of `generateExisting`: instead of only fixing up
 > [!TIP]
 > **Try it - backfill in the playground**
 >
-> The playground has a Deployment `web` in `team-a` and `team-b`. Apply the policy above and run `kubectl get deploy web -A --show-labels`. Give it a few seconds and run it again. Then change the label value in the policy, re-apply, and watch the value change on both Deployments. If nothing happens, see Part 3.
+> The playground has a Deployment `web` in `team-a` and `team-b`. Apply the policy above and run `kubectl get deploy web -A --show-labels`. Give it a few seconds and run it again. Then change the label value in the policy, re-apply, and watch the value change on both Deployments. If nothing happens, check the permissions of the background controller and its logs.
 
 > [!WARNING]
 > **Common pitfall**

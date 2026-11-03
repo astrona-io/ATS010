@@ -76,7 +76,21 @@ results:
     result: pass
 ```
 
-The file `patched.yaml` holds the whole expected object: the original Pod with the extra label `managed-by: kyverno`. The CLI mutates the input resource in memory and compares the result with the file. The easiest way to create the file is to run `kyverno apply` with `-o` (Module 1), read the output carefully, and check that it is what you expect. Do not copy the output without reading it: a wrong expected file locks the wrong behaviour into the test.
+The file `patched.yaml` holds the whole expected object: the original Pod with the extra label `managed-by: kyverno`. The CLI mutates the input resource in memory and compares the result with the file. The easiest way to create the file is to run `kyverno apply` with `-o`, read the output carefully, and check that it is what you expect. Do not copy the output without reading it: a wrong expected file locks the wrong behaviour into the test.
+
+## How the runner pairs expectations with real results
+
+The CLI does not run one policy against one resource for each line in `results`. It first runs every loaded policy on every loaded resource, in the same way as `kyverno apply`, and collects a real result for each combination of policy, rule and resource. Then it takes each expectation and looks up the real result with the same policy, rule, resource name and kind. If it finds one, it compares the `result` values. If it finds none, it reports the expectation as not found and the test fails.
+
+This has two consequences. A real result that no expectation names is not an error: the test passes even if a rule produced a result you never wrote down. That is why `--detailed-results` is useful, because it shows those unlisted results. And a name in `results` that belongs to no loaded resource can never pass.
+
+A policy in a namespace is named `<namespace>/<policy-name>` in the `policy` field. A cluster policy uses its plain name. Policies of the kind `ClusterPolicy` are the common case, so most files use the plain name.
+
+The values for `result` come from the engine. `pass` and `fail` are the outcomes of a rule that ran. `skip` means the rule did not apply. `warn` appears when a failing resource is covered by a policy that carries the annotation `policies.kyverno.io/scored: "false"`. A failure of such a policy is reported as a warning, because the policy is not scored.
+
+## Other fields of the test file
+
+The `variables` field names a `Values` file, as for `kyverno apply`. The `userinfo` field names a `UserInfo` file, so you can test a rule that depends on who calls. Both files use the API group `cli.kyverno.io/v1alpha1`. To use another file name than `kyverno-test.yaml`, pass `-f <name>` to `kyverno test`. To run a subset of the expectations, use `--test-case-selector` with a string such as `"policy=require-limits, rule=check-limits, resource=web-ok"`.
 
 ## Variables in tests
 

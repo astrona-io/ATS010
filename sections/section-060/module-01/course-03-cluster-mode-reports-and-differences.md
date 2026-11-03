@@ -8,9 +8,29 @@
 kyverno apply policies/require-team-label.yaml --cluster
 ```
 
-This answers a question that admission control cannot: which of the objects that already exist would fail this policy? It is the same question as a background scan (section 010), but you ask it before the policy is installed. In the lab, the Pod `legacy` was created before any policy existed, so the scan reports it and the exit code is non-zero. Use this run to size the cleanup work before you switch a policy to `Enforce`.
+This answers a question that admission control cannot: which of the objects that already exist would fail this policy? It is the same question as a background scan, but you ask it before the policy is installed. In the lab, the Pod `legacy` was created before any policy existed, so the scan reports it and the exit code is non-zero. Use this run to size the cleanup work before you switch a policy to `Enforce`.
 
 You can combine `--cluster` with a values file, for variables that you cannot read from the cluster. You can also combine it with `--resource` files, to test a manifest and the live objects in one run. Check `kyverno apply --help` for the other cluster-related flags in your version.
+
+## How --cluster finds the resources
+
+The CLI reads the kubeconfig and uses the current context, exactly as `kubectl` does. For each rule it takes the kinds in `match` and asks the API server to list objects of those kinds. Then it applies `match` and `exclude` locally and evaluates the rule on every object that remains. Because it lists objects, the identity in your kubeconfig needs `list` permission on those kinds. A permission error appears as an error from the API server, and the run does not give a result for that kind.
+
+Check the context before every `--cluster` run:
+
+```sh
+kubectl config current-context
+```
+
+Running a scan against the wrong cluster gives a correct-looking answer about the wrong objects. In the lab there is one kind cluster, so the context is the right one. In real work, CI jobs often hold several contexts.
+
+Two limits follow from the listing. The CLI sees only what exists at that moment, and it never watches for changes. It also lists the objects of the whole cluster for the kinds in `match`, unless the rule restricts namespaces. A broad `kinds: ["*"]` match in a large cluster is a heavy request to the API server, so restrict `match` by kind and namespace in the policy you scan with.
+
+For a report limited to one namespace, `-n` (used with `--cluster` and `--policy-report`) restricts the report to that namespace.
+
+## Exit codes in cluster mode
+
+The exit code rules are the same as for files. A failed rule on any live object makes the exit code non-zero, so the command is usable as a gate: "no existing object may violate this policy before I switch it to `Enforce`". If the scan finds `legacy`, the cleanup list has one entry. Fix or delete the object, run the scan again, and continue only when the exit code is 0 and the `pass` counter is above zero, because an empty `pass` count means the match selected nothing.
 
 ## --policy-report
 
@@ -20,7 +40,13 @@ By default the CLI prints text. `--policy-report` makes it print a policy report
 kyverno apply policies/ --resource resources/pod-nolabel.yaml --policy-report
 ```
 
-The CLI only prints the report. It does not create a `PolicyReport` object. Reports in the cluster are section 050.
+The CLI only prints the report. It does not create a `PolicyReport` object.
+
+## What a report result contains
+
+Each entry in a policy report is one result. A result names the `policy` and the `rule`, the `result` value (`pass`, `fail`, `warn`, `error` or `skip`), a `message` for failures, and the resource it judged. The report also has a `summary` with one counter for each result value. These are the same five values as the counters that `kyverno apply` prints, so a CLI run, a CLI report and a report from the cluster use one vocabulary.
+
+That common vocabulary is why you can compare them. Run `kyverno apply` with `--cluster --policy-report` on a policy that is already installed, and run `kubectl get policyreport -A -o json` for the same namespace. For the same objects the results should agree. A difference points to one of the causes in the table below: for example, a resource that the live webhook configuration never sends to Kyverno, or an exception that only the cluster knows.
 
 ## Where a CLI result can differ from the cluster
 
@@ -44,6 +70,21 @@ Two practical rules follow. First, pin the CLI version in your CI to the version
 >
 > Apply `require-team-label` with `kubectl apply -f policies/require-team-label.yaml` and wait until it is Ready. Then run `kubectl apply --dry-run=server -f resources/pod-nolabel.yaml` and compare the message with the CLI failure. They should name the same policy and rule. Now remove `namespace: lab` from a copy of the manifest and run the CLI on it. What happens to the `skip` counter?
 
+## A scan before an Enforce rollout
+
+The three tools in this part fit one workflow for a new policy. First, write the policy and run it on sample files, to check the logic. Second, run it with `--cluster` to count the live objects that fail. Each failure is a cleanup task for its owner. Third, apply the policy in `Audit` mode and compare its report with the CLI scan. When both show the same objects, switch the policy to `Enforce`.
+
+The CLI scan is cheaper than the Audit step because it does not need the policy in the cluster. It is also less complete, because it does not know about exceptions, request data or Kyverno's own filters. Use the scan to plan the work and the cluster report to confirm it.
+
 ## Putting it together in a pipeline
 
-A typical pipeline step for a policies repository runs the CLI on every policy and a set of sample resources, with `--audit-warn` for policies that are still in `Audit`. A non-zero exit code stops the merge. After the merge, a deployment tool applies the policy to the cluster. Module 2 adds `kyverno test`, which stores the expected result next to the sample resources so that the pipeline checks them instead of you reading the output.
+A typical pipeline step for a policies repository runs the CLI on every policy and a set of sample resources, with `--audit-warn` for policies that are still in `Audit`. A non-zero exit code stops the merge. After the merge, a deployment tool applies the policy to the cluster. The `kyverno test` command goes one step further: it stores the expected result next to the sample resources so that the pipeline checks them instead of you reading the output.
+
+## Common pitfalls
+
+- Running `--cluster` against the wrong kubectl context and trusting the answer.
+- Reading `exit=0` as "the cluster is clean" when the `pass` counter is 0 and the match selected no object.
+- Treating the CLI report as a `PolicyReport` object. The CLI only prints it, and nothing is stored in the cluster.
+- Expecting `--cluster` to apply a policy. The command reads the cluster and never changes it.
+- Using a different CLI version than the Kyverno controllers. The same policy can then give different results.
+- Forgetting that a CLI run does not know about `PolicyException` objects, so a resource that is exempt in the cluster still fails the scan.

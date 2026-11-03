@@ -26,7 +26,7 @@ Annotations are good for *opt-in or opt-out flags that humans or tools write on 
 | `namespaces` | Namespace name | Whoever creates namespaces | Fixed environments |
 | `namespaceSelector` | Namespace labels | Whoever can relabel namespaces | Environment tiers |
 | `annotations` | Resource annotations | The object author | Opt-in/opt-out flags |
-| `selector` (Module 2) | Resource labels | The object author | App tiers, ownership |
+| `selector` | Resource labels | The object author | App tiers, ownership |
 
 ## How `exclude` works
 
@@ -83,7 +83,7 @@ exclude:
       names: ["public-*"]
 ```
 
-A quick rule to carry with you: **fields inside one block narrow; entries in `any` widen; entries in `all` narrow again.** Module 2 covers `any`/`all` in full.
+A short rule to remember: **fields inside one block narrow; entries in `any` widen; entries in `all` narrow again.**
 
 > [!TIP]
 > **Try it: prove exclude wins**
@@ -162,7 +162,7 @@ Practical consequences:
 
 ## Three scoping patterns
 
-1. **Allow-list by convention.** `namespaceSelector: {env: prod}` + `names: ["public-*"]`: the shape of the Module 1 lab. Two independent axes keep the blast radius small.
+1. **Allow-list by convention.** `namespaceSelector: {env: prod}` + `names: ["public-*"]`: the shape of the lab for this module. Two independent axes keep the blast radius small.
 2. **Broad rule with named exceptions.** Match every Pod, `exclude` the namespaces that must stay out of reach (for example `kube-system`). Prefer excluding a small, stable set over trying to enumerate everything you want to include.
 3. **Opt-out with a guard.** Exclude on an annotation, but only in a namespace tier that may use it, by ANDing both inside the exclude block (`annotations` and `namespaceSelector` in one `resources` entry).
 

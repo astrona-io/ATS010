@@ -75,4 +75,4 @@ Use them like this: `results fleet-reports require-owner-label`, `watch_results 
 - Run the whole rollout gate on `require-owner-label-gate`: apply it in `Audit`, list violators, fix `bad-1` and `bad-2`, delete `bad-3`, wait for zero `fail`, patch to `Enforce`, then test with `kubectl -n rollout-lab create --dry-run=server -f <file>`.
 - Create a violating ConfigMap after the flip and note that `Enforce` rejects it and no `fail` result appears for it.
 - Add `spec.emitWarning: true` to a copy of the policy in `Audit` and create a violating ConfigMap. Does `kubectl` print a warning? Check the field first with `kubectl explain clusterpolicy.spec.emitWarning`.
-- Enable PolicyExceptions (Section 010, module 2) and write an exception for one violator. Look for a `skip` result and note whether the background results show it too.
+- Enable PolicyExceptions (the flag `--enablePolicyException=true` and `--exceptionNamespace` on the admission, background and reports controllers) and write an exception for one violator. Look for a `skip` result and note whether the background results show it too.

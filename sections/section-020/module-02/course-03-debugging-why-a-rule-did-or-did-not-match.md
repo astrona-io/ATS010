@@ -26,7 +26,7 @@ kubectl get clusterpolicy <name> -o yaml
 
 Look for the three classics:
 
-- You applied a namespaced `Policy` and expected cluster-wide effect (Module 1, Part 3).
+- You applied a namespaced `Policy` and expected cluster-wide effect.
 - The apply printed a validation error you did not notice and the policy was never created.
 - `spec.validationFailureAction` is `Audit`, so a "failing" request is admitted and only reported. Remember that `Audit` never blocks. Selection can be perfect and nothing is rejected.
 
@@ -79,7 +79,7 @@ A group you assumed ("platform-admins") may simply not be sent by your authentic
 
 ## Step 5: does `exclude` also match?
 
-Exclude is silent by design: an excluded request leaves no message at all. When a rule that "should" fire does not, temporarily read the `exclude` block as its own filter and test it the same way you tested `match`. The AND-inside-one-block trap from Module 1 (`namespaces` and `names` together excluding only the intersection) lives here.
+Exclude is silent by design: an excluded request leaves no message at all. When a rule that "should" fire does not, temporarily read the `exclude` block as its own filter and test it the same way you tested `match`. The AND-inside-one-block trap (`namespaces` and `names` together excluding only the intersection) lives here.
 
 ## A fast way to probe: server-side dry-run
 

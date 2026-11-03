@@ -12,7 +12,7 @@ flowchart LR
     AG --> R["PolicyReport /<br/>ClusterPolicyReport"]
 ```
 
-The reports you read in Module 1 are the product of this pipeline. The two inputs are an admission-time evaluation and a background scan. The reports controller merges both into the final report objects.
+The `PolicyReport` objects you read with `kubectl` are the product of this pipeline. The two inputs are an admission-time evaluation and a background scan. The reports controller merges both into the final report objects.
 
 ## How this module is organised
 
@@ -35,7 +35,7 @@ After this module you can:
 
 ## Before you start
 
-You should be able to read reports (Module 1). The playground gives you a kind cluster with Kyverno 1.13.2, an `Audit` policy and a handful of seeded ConfigMaps, so you can change a resource or the policy and watch the reports follow. `jq` is expected on your machine.
+You should be able to read a `PolicyReport` with `kubectl` and `jq`. The playground gives you a kind cluster with Kyverno 1.13.2, an `Audit` policy and a handful of seeded ConfigMaps, so you can change a resource or the policy and watch the reports follow. `jq` is expected on your machine.
 
 Launch your playground now, and keep it running next to you while you read the parts:
 

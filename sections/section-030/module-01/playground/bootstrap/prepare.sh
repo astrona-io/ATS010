@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starting state for the Module 1 playground. Environment only: installs
+# Starting state for the playground. Environment only: installs
 # Kyverno v1.13.2, waits until it is ready, and creates two empty namespaces.
 # It creates no ClusterPolicy.
 set -euo pipefail

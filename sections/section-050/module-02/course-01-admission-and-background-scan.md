@@ -32,7 +32,7 @@ If the output does not list `backgroundScanInterval`, the default applies. Do no
 
 ## The reports you read are the aggregated product
 
-Both sources write short-lived internal objects first. In Kyverno 1.13 these are `EphemeralReport` and `ClusterEphemeralReport` objects in the `reports.kyverno.io` API group. They exist to carry one evaluation each, and the reports controller merges them into the `PolicyReport` and `ClusterPolicyReport` objects of Module 1, then removes them. You can list them if the CRDs are present in your version:
+Both sources write short-lived internal objects first. In Kyverno 1.13 these are `EphemeralReport` and `ClusterEphemeralReport` objects in the `reports.kyverno.io` API group. They exist to carry one evaluation each, and the reports controller merges them into the `PolicyReport` and `ClusterPolicyReport` objects, then removes them. You can list them if the CRDs are present in your version:
 
 ```sh
 kubectl api-resources --api-group=reports.kyverno.io
@@ -55,6 +55,27 @@ sequenceDiagram
     RC->>RC: later: background scan re-checks
     RC->>R: refresh result
 ```
+
+## Which controller does what
+
+Kyverno 1.13 runs four controllers, each as its own Deployment in the `kyverno` namespace. Knowing their jobs tells you where to look when a result is missing.
+
+| Controller | Job in the reporting pipeline |
+| --- | --- |
+| Admission controller | Answers webhook requests, evaluates rules in flight and sends each result to the reports machinery as an ephemeral report |
+| Reports controller | Runs the background scan, merges ephemeral reports into `PolicyReport` and `ClusterPolicyReport` objects and removes the old ones |
+| Background controller | Runs `generate` and `mutate-existing` rules. It does not write validation reports |
+| Cleanup controller | Deletes resources for cleanup policies. It does not write validation reports |
+
+A missing result for a validate rule is therefore a problem of the admission controller (the request never reached it) or of the reports controller (the result arrived and was not merged). The background and cleanup controllers are not part of that path.
+
+The reports controller has switches for both sources. In 1.13 the flag `--admissionReports` enables the reports that admission creates from validate rules in `Audit` mode, and the flag `--backgroundScan` enables the background scan. Both default to `true`. If a cluster owner disabled one of them to save resources, one source of results is gone. Read the argument list of the reports controller before you conclude that a policy is wrong.
+
+## The order of events for one change
+
+Take a policy change as an example. You change the `match` of a policy that is `Ready`. Kyverno updates the policy object, and the reports controller sees the change. It queues a scan for every resource the new `match` selects. Results for resources that fell out of the match are removed. Results for new resources appear. All this happens after your `kubectl apply` returns, in seconds for a few resources and in minutes for thousands.
+
+Now take a resource change. You label a ConfigMap. The admission controller sees the update request, evaluates the matching rules and sends results. The reports controller merges them into the report of that resource. The scan does not need to run, because admission already provided the new result. The periodic scan later confirms it. If admission was unavailable at the time of the update, the next scan picks the change up.
 
 ## What Enforce does and does not write
 

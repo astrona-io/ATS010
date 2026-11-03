@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs Kyverno and seeds the Module 1 playground. Runs once at start.
+# Installs Kyverno and seeds the playground. Runs once at start.
 set -eu
 
 KYVERNO_VERSION="v1.13.2"

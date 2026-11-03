@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seeds the Module 1 working directory $HOME/kyverno-lab/m1 with Pod manifests,
+# Seeds the first working directory $HOME/kyverno-lab/m1 with Pod manifests,
 # and creates the namespace `lab` with one non-compliant Pod named `legacy`.
 set -euo pipefail
 

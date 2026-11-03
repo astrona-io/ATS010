@@ -2,7 +2,7 @@
 
 Every Kyverno rule opens with the same question: *which resources does this rule even get to look at?* That question is answered entirely by the rule's `match` block (and narrowed further by an optional `exclude` block). Get this wrong and the rest of the rule, however correct its `validate`, `mutate`, or `generate` logic is, either fires on the wrong resources or never fires at all.
 
-Think of `match` as the address on an envelope. The postal service (Kyverno's admission webhook) receives thousands of envelopes a minute. The address decides which ones are opened and read. `exclude` is the "return to sender" stamp that pulls a few envelopes back out even though the address matched.
+The `match` block of a rule decides which admission requests the rule evaluates. Kyverno's admission webhook receives every request that the API server sends for the configured kinds. For each request, the fields in `match` (kind, name, namespace, labels and others) select the rules that apply. The `exclude` block then removes requests from that selection, even though `match` selected them.
 
 This module works through the first layer of that selection: matching by resource `kind`, by resource `name`, by the `namespace` the resource lives in (both the static list and the dynamic, label-driven `namespaceSelector`), and then the first look at `exclude`, annotations, and how `Policy` differs from `ClusterPolicy`.
 

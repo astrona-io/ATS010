@@ -45,7 +45,7 @@ Setting it to `false` skips that schema comparison. In practice it shows up as a
 
 ## background, revisited as a deliberate setting
 
-You met `spec.background` in Section 010 as the switch that makes Kyverno periodically re-scan resources that already exist, independent of admission control, and write the results into policy reports. Here it is as one of the "common settings" you configure on every policy.
+`spec.background` is the switch that makes Kyverno periodically re-scan resources that already exist, independent of admission control, and write the results into policy reports. Here it is as one of the "common settings" you configure on every policy.
 
 ```yaml
 spec:
@@ -71,6 +71,17 @@ So a rule that depends on the caller cannot be evaluated by a scan. Kyverno prot
 Setting `background: false` is the honest signal: "this rule is admission-only by design." It also saves the background controller the work of re-evaluating something it can never check, and it means that policy produces no background report entries for those rules.
 
 When you do want a rule to run only as a background scan, the next part shows the companion switch, `admission`.
+
+## What background changes in the reports
+
+The setting decides which source can write results for the policy. With `background: true`, a rule produces results from admission and from the background scan, and a scan covers resources that exist before the policy. With `background: false`, the rule runs only at admission. Resources that existed before the policy have no result for it, and the reports show nothing for them. This is correct for a rule that needs a caller, but it means that a cluster owner cannot use reports to find old violators of that rule.
+
+| `background` | Rule can use caller data | Old resources get a result | Scan work for the controller |
+| --- | --- | --- | --- |
+| `true` | No | Yes | Yes |
+| `false` | Yes | No | None |
+
+The cost side matters on large clusters. Each scan evaluates every resource that the policy matches. A policy with a broad `match` and `background: true` makes the reports controller evaluate every matching object on every scan. Narrow the `match` to the kinds and namespaces you care about before you rely on the scan.
 
 > [!TIP]
 > **Rule of thumb**

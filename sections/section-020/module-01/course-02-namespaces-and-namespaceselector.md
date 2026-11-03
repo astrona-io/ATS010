@@ -159,7 +159,7 @@ flowchart TD
 
 ## What `namespaceSelector` does not do
 
-- It never reads the labels of the **resource** you are validating. That is the job of the `selector` field (Module 2). A Pod labeled `env: prod` in a namespace without that label is not selected by `namespaceSelector: {env: prod}`.
+- It never reads the labels of the **resource** you are validating. That is the job of the `selector` field . A Pod labeled `env: prod` in a namespace without that label is not selected by `namespaceSelector: {env: prod}`.
 - It is not evaluated once at apply time. Each admission request resolves the namespace's labels again.
 - It does not retroactively change objects that already exist. A namespace that joins the scope later is evaluated for new admission requests (and for background scans on policies that allow them), not rewritten.
 

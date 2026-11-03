@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starting state for the Module 2 playground. Environment only: installs
+# Starting state for the playground. Environment only: installs
 # Kyverno v1.13.2, lets the background controller manage the kinds the
 # practice tasks use, and creates namespaces and Deployments that exist
 # BEFORE any policy does. It creates no ClusterPolicy.

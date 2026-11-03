@@ -31,7 +31,7 @@ After this module you can:
 
 ## Before you start
 
-You should know what a `ClusterPolicy` is and how `Audit` differs from `Enforce` (Section 010). The playground gives you a kind cluster with Kyverno 1.13.2, two `Audit` policies and a small set of seeded ConfigMaps and Namespaces, some compliant and some not. `kubectl` points at it and `jq` is expected on your machine.
+You should know what a `ClusterPolicy` is and how `Audit` differs from `Enforce`. The playground gives you a kind cluster with Kyverno 1.13.2, two `Audit` policies and a small set of seeded ConfigMaps and Namespaces, some compliant and some not. `kubectl` points at it and `jq` is expected on your machine.
 
 Launch your playground now, and keep it running next to you while you read the parts:
 

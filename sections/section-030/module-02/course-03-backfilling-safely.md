@@ -16,6 +16,32 @@ flowchart LR
 1. **It needs permission.** The background controller only has the rights Kyverno's own ClusterRoles grant it. If a policy generates or patches a kind it cannot write, the backfill does not happen, and the failure appears as controller logs and as an error in the policy's `status`, not as an error in your `kubectl apply`. Kyverno builds the controller's rights from ClusterRoles that carry an aggregation label, so you add rights by creating a ClusterRole with the label `rbac.kyverno.io/aggregate-to-background-controller: "true"` and the verbs it needs (`create`, `update`, `get`, `list`, `delete` for generate; `get`, `list`, `patch`, `update` for mutate-existing). The playground bootstrap does exactly that.
 2. **It is asynchronous.** The policy is `Ready` before the backfill finishes. A validation that runs immediately after `kubectl apply` can see nothing yet. Poll for the result instead of reading it once.
 
+## How the permission is assembled
+
+Kubernetes RBAC (role-based access control) can combine ClusterRoles. A ClusterRole with an `aggregationRule` has no rules of its own. Its rules are the union of all ClusterRoles whose labels match the selectors in that `aggregationRule`. Kyverno uses this feature for each of its controllers. The ClusterRole bound to the background controller selects every ClusterRole with the label `rbac.kyverno.io/aggregate-to-background-controller: "true"`. When you create a labelled ClusterRole, Kubernetes adds its rules to the controller role within a short time. You do not edit any Kyverno role.
+
+The same pattern exists for the other controllers, with the labels `rbac.kyverno.io/aggregate-to-admission-controller`, `rbac.kyverno.io/aggregate-to-reports-controller` and `rbac.kyverno.io/aggregate-to-cleanup-controller`. Use the label of the controller that runs your rule. Generate and mutate-existing rules run in the background controller.
+
+Two commands check the result. The first lists the labelled roles. The second asks the API server whether the service account of the controller may perform a verb on a kind:
+
+```sh
+kubectl get clusterrole -l rbac.kyverno.io/aggregate-to-background-controller=true
+kubectl auth can-i create networkpolicies --as=system:serviceaccount:kyverno:kyverno-background-controller -A
+```
+
+The answer is `yes` or `no`. A `no` for a kind that your policy generates is the cause of a backfill that does nothing. Run the check before you apply the policy, not after you wonder why nothing happened.
+
+## What the controller queues
+
+For each unit of background work, Kyverno creates an `UpdateRequest` object in the `kyverno` namespace. The object names the policy, the rule and the trigger resource. The background controller reads the queue, does the work, and deletes or updates the request. A request that stays in a failed state carries the error message in its `status`. That is the object to read when the controller log is too long to search:
+
+```sh
+kubectl -n kyverno get updaterequests
+kubectl -n kyverno describe updaterequest <name>
+```
+
+If the list is empty and nothing was generated, the rule never queued work. In that case the cause is in the policy: `generateExisting` is not `true`, or `match` selects no trigger resource.
+
 ## Reading the result of a backfill
 
 - `kubectl get networkpolicy -A` or `kubectl get cm -A` to see what was generated.
@@ -25,6 +51,10 @@ flowchart LR
 - `kubectl get updaterequests -A` can show pending work in Kyverno's queue while a backfill runs. If the list stays long, the controller is stuck on something.
 
 A generated object also carries labels that point back at the policy and rule that created it, so `kubectl get <kind> -A --show-labels` tells you which objects a policy owns. If you want to know exact label names, read them off one object rather than relying on memory.
+
+## Why a fix after a failed backfill may need a policy update
+
+When the background controller lacks a permission, the `UpdateRequest` for that work fails. Adding the missing ClusterRole later does not always restart work that already failed. Re-applying the policy (an edit to the policy, even a label) makes Kyverno queue the sweep again for `generateExisting` and for `mutateExistingOnPolicyUpdate`. The sequence for a recovery is: add the role, check it with `kubectl auth can-i`, update the policy, then read the generated objects and the `UpdateRequest` list again.
 
 ## synchronize: keep generated objects honest
 

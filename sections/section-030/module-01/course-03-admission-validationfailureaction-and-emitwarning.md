@@ -27,7 +27,7 @@ spec:
 | admission | background | What you get |
 | --- | --- | --- |
 | `true` | `true` | Default. Checked at admission and re-checked by scans |
-| `true` | `false` | Admission only. Needed for rules that use caller data (Part 2) |
+| `true` | `false` | Admission only. Needed for rules that use caller data |
 | `false` | `true` | Scan only. Nothing is ever blocked; existing resources get report results |
 | `false` | `false` | Policy does nothing; Kyverno will complain at apply time |
 
@@ -35,7 +35,7 @@ A scan-only policy is a clean way to ask "how bad is it?" in a cluster you do no
 
 ## validationFailureAction: Enforce or Audit
 
-You have used this since Section 010, so this is a recap with the pieces in one place.
+This is a recap with the pieces in one place.
 
 ```yaml
 spec:

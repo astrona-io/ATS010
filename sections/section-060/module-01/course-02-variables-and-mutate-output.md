@@ -46,6 +46,25 @@ kyverno apply policies/require-env-label.yaml --resource resources/pod-prod.yaml
 >
 > Run the command above and note the exit code. Remove the `allowedEnv` line from the values file and run it again. The run now reports an error for the rule because the variable has no value. A policy that works in a cluster without values can still need values in the CLI, for example when it reads `request.userInfo` or a ConfigMap through a context entry.
 
+## Global values and namespace labels
+
+A values file has two more top-level fields that save repetition. `globalValues` holds values that apply to every policy and every resource in the run. A value in a `resources` item with the same name overrides the global value for that resource only. The field `namespaceSelector` lists namespaces with their labels:
+
+```yaml
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Values
+globalValues:
+  request.operation: UPDATE
+namespaceSelector:
+  - name: lab
+    labels:
+      env: dev
+```
+
+A file holds no namespace labels, because labels belong to the `Namespace` object and not to the Pod. A rule with `namespaceSelector` in its `match` block needs them, so the CLI reads them from this list. Without an entry for the namespace of the resource, the rule does not match and the resource is skipped. The key `request.operation` in `globalValues` is the same variable that `--set request.operation=UPDATE` sets.
+
+For a rule that reads `request.userInfo`, the CLI accepts a user-info file with `--userinfo` (short form `-u`). The file has the kind `UserInfo` in `cli.kyverno.io/v1alpha1`. It holds `clusterRoles` and a `userInfo` object with a `username`. This lets you test a rule that exempts a service account, as the live cluster would see the caller.
+
 ## Variables that need a cluster
 
 Some variables need data that no file contains. A `context` entry that reads a `ConfigMap` or calls the Kubernetes API (`apiCall`) needs a cluster. In a file-based run, give the value in the values file instead, or run the command with `--cluster` (next part). Test rules that use `request.userInfo`, `request.roles` or `request.clusterRoles` by supplying those values too. The CLI can take a user-info file for this purpose; see `kyverno apply --help`.
@@ -58,7 +77,7 @@ A mutate rule changes a resource. With `kyverno apply` the resource file is neve
 kyverno apply policies/add-managed-by-label.yaml --resource resources/pod-good.yaml -o out/patched.yaml
 ```
 
-Without `-o` the CLI prints the result to the terminal. With `-o` you get a file that you can read, diff against the input, and use as the expected output of a test (Module 2). When the resources argument names several files, give `-o` a directory.
+Without `-o` the CLI prints the result to the terminal. With `-o` you get a file that you can read, diff against the input, and use as the expected output of a test. When the resources argument names several files, give `-o` a directory.
 
 ```sh
 diff resources/pod-good.yaml out/patched.yaml
@@ -70,6 +89,12 @@ The diff shows only the added `managed-by: kyverno` label. If it shows nothing, 
 > **Try it - mutate then validate**
 >
 > A policy set can contain both a mutate and a validate rule. The CLI applies mutate rules first and validates the mutated resource, like the live cluster does. Write a validate rule that requires `managed-by: kyverno`, then run `kyverno apply` with both policy files on `pod-good.yaml`. The validate rule passes only because the mutate rule ran first.
+
+## How the patch is computed
+
+Kyverno has two ways to write a mutate rule. `patchStrategicMerge` describes the wanted fields as a partial resource. Kyverno merges that partial resource into the original: maps are merged key by key, and lists of containers are matched by the `name` field. `patchesJson6902` is a list of operations such as `add` and `replace`, each with a `path`. Both methods work on the resource in memory and give the same kind of result in `-o`: the full resource after all matching mutate rules.
+
+A mutate rule should be idempotent, which means that running it a second time on its own output changes nothing. The rule in the lab is idempotent: it sets one label to a fixed value. You can check it with the CLI. Run the policy on `resources/pod-good.yaml`, save the output, and run the policy again on the saved output. The two outputs must be equal. A rule that appends to a list, for example with a JSON patch `add` at the end of `args`, fails this check, and the live cluster would add the entry again on every update.
 
 ## Common mistakes
 

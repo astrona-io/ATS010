@@ -29,6 +29,20 @@ The CLI does not run every rule on every file. It evaluates the `match` and `exc
 
 This is the most common reason for a "passing" run that proves nothing. When you write a policy with `namespaces` or `namespaceSelector`, put the namespace in the resource file. The lab manifests all carry `namespace: lab` for this reason.
 
+## What the CLI does for each resource
+
+The CLI runs the same steps as the admission controller, in the same order, but on the files you give it. For every resource it first loads the policies and checks them. Then, for every rule, it tests `match` and `exclude`. If the rule is selected, it evaluates the `preconditions`. Only then does it run the rule itself. A rule that stops at the match step or at the preconditions counts as `skip`. A rule that runs and succeeds counts as `pass`. A rule that runs and finds a violation counts as `fail`, or as `warn` for an Audit policy with `--audit-warn`.
+
+Three details of this loop matter in practice. First, a namespaced `Policy` (not a `ClusterPolicy`) applies only to resources whose `metadata.namespace` equals the namespace of the policy. A file without that namespace is skipped. Second, for a policy that matches `Pod`, Kyverno generates extra rules for Pod controllers such as `Deployment`. Their names start with `autogen-`. The CLI evaluates them too, so a Deployment manifest is checked against a Pod rule without extra work. Third, the CLI reads the resources only from the files you name. It does not add defaults that the API server would add.
+
+You can also pipe a manifest into the command. The value `-` after `--resource` makes the CLI read the resource from standard input. This is useful with output from `kubectl`:
+
+```sh
+kubectl -n lab get pod legacy -o yaml | kyverno apply policies/require-team-label.yaml --resource -
+```
+
+The manifest that `kubectl get -o yaml` returns is the live object, with the fields that the API server added. It is a better test input than a hand-written file when you want to know how a policy sees a real Pod.
+
 ## What the exit code means
 
 The exit code is the contract between the CLI and a script or a CI job. The rules in Kyverno 1.13 are these:
@@ -52,12 +66,26 @@ kyverno apply policies/disallow-latest-tag.yaml --resource resources/pod-latest.
 kyverno apply policies/disallow-latest-tag.yaml --resource resources/pod-latest.yaml --audit-warn; echo "exit=$?"
 ```
 
-Use it in a CI job that checks policies you have not yet moved to `Enforce`. The job shows the findings and does not stop the pipeline. `Enforce` policies still fail the job. This is the CLI version of the Audit-then-Enforce rollout from section 010.
+Use it in a CI job that checks policies you have not yet moved to `Enforce`. The job shows the findings and does not stop the pipeline. `Enforce` policies still fail the job. This is the CLI version of the Audit-then-Enforce rollout.
 
 > [!TIP]
 > **Try it - flip the action**
 >
 > Change `disallow-latest-tag` from `Audit` to `Enforce` and run the same two commands. The first still fails. The second now also fails, because `--audit-warn` only softens `Audit` policies.
+
+## Exit codes in a script
+
+A shell script reads the exit code of the last command. In a script with `set -e`, a non-zero exit from `kyverno apply` ends the script at that line. If you want to run several policy checks and report all of them, store the code instead:
+
+```sh
+rc=0
+for r in resources/*.yaml; do
+  kyverno apply policies/ --resource "$r" || rc=1
+done
+exit "$rc"
+```
+
+The loop runs the policies on each file and remembers that at least one run failed. The final line returns one code for the whole job. Note that the resources in `resources/` include deliberately bad samples such as `pod-nolabel.yaml`, so this exact loop is only useful on a directory that holds files that must all pass.
 
 ## Reading failures
 

@@ -40,7 +40,7 @@ It prints a table of results, one row per expectation, and finishes with a non-z
 
 ## The CI job
 
-A pipeline job has three steps: get the CLI, run the tests, and fail on a non-zero exit code. The CLI is one binary. Download the release tarball of the exact version (Module 1 and the lab bootstrap do this for v1.13.2), put it on `PATH`, and check it with `kyverno version`. Pin the version in the job. A floating "latest" CLI can change the format or the result of a rule between two runs of the same commit.
+A pipeline job has three steps: get the CLI, run the tests, and fail on a non-zero exit code. The CLI is one binary. Download the release tarball of the exact version (the lab bootstrap does this for v1.13.2), put it on `PATH`, and check it with `kyverno version`. Pin the version in the job. A floating "latest" CLI can change the format or the result of a rule between two runs of the same commit.
 
 ```sh
 #!/usr/bin/env bash
@@ -56,6 +56,27 @@ Three details make this script safe. `set -euo pipefail` stops the script on the
 >
 > Run `ci/run-policy-tests.sh` and note that the exit code is 0. In a scratch copy of the directory, change the policy so that it no longer matches the expectation (for example, change `"?*"` to a value that no container sets), run the script again, and check that the exit code is non-zero. A CI test that you have never seen fail is a test that you do not know works. The lab grades exactly this check.
 
+## Where kyverno test reads from
+
+The path argument can also be a Git repository URL. In that case the CLI clones the repository and searches it for test files. The flag `-b` (long form `--git-branch`) selects the branch and defaults to `main`. For a CI job this is rarely needed, because the job already has the repository checked out. The local path is the common case.
+
+Paths inside a test file are relative to the directory of that file, not to the directory where you run the command. That rule is why `../../policies/require-limits.yaml` works from any current directory. If you move a test directory one level deeper, every `../../` must change to `../../../`. A broken path shows up as an error that the policy or resource file cannot be read.
+
+## An example job
+
+The job needs two things from the environment: the pinned CLI and the repository. The commands below install CLI v1.13.2 on a Linux x86-64 runner. The name of the release file is `kyverno-cli_v1.13.2_linux_x86_64.tar.gz`, and the archive holds one binary named `kyverno`:
+
+```sh
+curl -fsSL -o /tmp/kyverno-cli.tar.gz \
+  https://github.com/kyverno/kyverno/releases/download/v1.13.2/kyverno-cli_v1.13.2_linux_x86_64.tar.gz
+tar -xzf /tmp/kyverno-cli.tar.gz -C /tmp kyverno
+install -m 0755 /tmp/kyverno /usr/local/bin/kyverno
+kyverno version
+ci/run-policy-tests.sh
+```
+
+On a Mac or an ARM machine the file name changes: the operating system is `darwin` or `linux`, and the architecture is `x86_64` or `arm64`. The lab bootstrap detects both with `uname`. The release also publishes a checksums file. A strict pipeline downloads it and checks the archive before it installs the binary.
+
 ## What to test
 
 For each policy, write at least:
@@ -69,4 +90,4 @@ Keep the samples small. A Pod with ten fields is easier to reason about than a c
 
 ## Tests are not the cluster
 
-A passing `kyverno test` says that the policy engine gives the expected result for the file samples. It does not prove that the policy is applied to the cluster, that the webhook sees the resource, or that an exception does not exempt it. Part 3 of Module 1 lists these differences. Keep a deployment step after the tests, and a cluster check such as `kubectl apply --dry-run=server` for a known bad resource. The lab ends with such a check.
+A passing `kyverno test` says that the policy engine gives the expected result for the file samples. It does not prove that the policy is applied to the cluster, that the webhook sees the resource, or that an exception does not exempt it. The differences are the same as for `kyverno apply`: API server defaults, request data such as `request.userInfo`, namespace labels, exceptions and the webhook configuration. Keep a deployment step after the tests, and a cluster check such as `kubectl apply --dry-run=server` for a known bad resource. The lab ends with such a check.

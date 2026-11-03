@@ -2,7 +2,7 @@
 
 ## The shape of a match block
 
-Before the individual fields, fix the outer shape in your head. A rule's `match` contains a list under `any` (OR) or `all` (AND). Each entry in that list is a *filter*, and a filter can carry a `resources` block, plus identity fields you meet in Module 2. Everything in this module happens inside one `resources` block:
+Before the individual fields, note the outer shape. A rule's `match` contains a list under `any` (OR) or `all` (AND). Each entry in that list is a *filter*, and a filter can carry a `resources` block, plus identity fields (`subjects`, `roles`, `clusterRoles`). Everything in this module happens inside one `resources` block:
 
 ```yaml
 match:
@@ -96,7 +96,7 @@ resources:
 This matches any `ConfigMap` whose name starts with `prod-` **or** starts with `canary-`. The list is evaluated as OR. Use `names` whenever you have more than one pattern; it is easier to read than several near-identical filters.
 
 > [!NOTE]
-> `name`/`names` compare against `metadata.name`. Objects created with `generateName` (the Pods a Deployment creates, for instance) have no final name at the moment some admission requests are built. If a name-scoped rule misses controller-created objects, the safer scope is a label (Module 2) or the namespace.
+> `name`/`names` compare against `metadata.name`. Objects created with `generateName` (the Pods a Deployment creates, for instance) have no final name at the moment some admission requests are built. If a name-scoped rule misses controller-created objects, the safer scope is a label (`selector`) or the namespace.
 
 ## The wildcards: `*` and `?`
 

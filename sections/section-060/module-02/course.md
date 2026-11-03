@@ -33,7 +33,7 @@ After this module you can:
 
 ## Before you start
 
-You finished Module 1 or you can run `kyverno apply` and read its exit code. The playground installs the CLI v1.13.2 on your machine, a single-node `kind` cluster with Kyverno v1.13.2, and the directory `$HOME/kyverno-lab/m2` with two policies (`require-limits`, `add-managed-by-label`), three Pod manifests and empty `tests/limits`, `tests/labels` and `ci` directories.
+You can run `kyverno apply` and read its exit code. The playground installs the CLI v1.13.2 on your machine, a single-node `kind` cluster with Kyverno v1.13.2, and the directory `$HOME/kyverno-lab/m2` with two policies (`require-limits`, `add-managed-by-label`), three Pod manifests and empty `tests/limits`, `tests/labels` and `ci` directories.
 
 Launch your playground now and keep it running next to you while you read the parts:
 

@@ -33,7 +33,7 @@ After this module you can:
 
 ## Before you start
 
-This module assumes you're comfortable applying `ClusterPolicy` resources and reading their `spec` (Section 010). The playground and the linked lab give you a kind Kubernetes cluster with `kubectl` already configured and Kyverno v1.13.2 already installed.
+This module assumes you're comfortable applying `ClusterPolicy` resources and reading their `spec`. The playground and the linked lab give you a kind Kubernetes cluster with `kubectl` already configured and Kyverno v1.13.2 already installed.
 
 Launch the playground now and keep it running next to you while you read. It has Kyverno, the empty namespaces `critical-ns`, `lenient-ns` and `sandbox`, and no policies. Every "Try it" box in the parts works there.
 

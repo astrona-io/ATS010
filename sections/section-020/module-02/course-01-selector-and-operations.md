@@ -2,7 +2,7 @@
 
 ## `selector`: labels on the resource itself
 
-Module 1 covered `namespaceSelector`, which reads labels off the *Namespace object* a resource lives in. `selector` looks somewhere different: the labels on the *matched resource itself*.
+`namespaceSelector` reads labels off the *Namespace object* a resource lives in. `selector` looks somewhere different: the labels on the *matched resource itself*.
 
 ```yaml
 match:

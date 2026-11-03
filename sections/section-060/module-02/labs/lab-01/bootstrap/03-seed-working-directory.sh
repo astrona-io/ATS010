@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seeds the Module 2 working directory $HOME/kyverno-lab/m2 with two policies
+# Seeds the second working directory $HOME/kyverno-lab/m2 with two policies
 # and three Pod manifests. The learner writes the tests, the expected mutated
 # file and the CI script.
 set -euo pipefail

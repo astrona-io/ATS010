@@ -1,6 +1,6 @@
 # Rule-Level Settings: applyRules, generateExisting & mutateExistingOnPolicyUpdate
 
-Module 1 covered settings about how resilient a policy is at the webhook boundary. This module covers settings about *what* a policy's rules actually do once they run, and two things that trip up almost everyone the first time they meet them: whether a policy's rules all run together or stop at the first match, and whether Kyverno's `generate` and `mutate` rules only ever look forward at new resources, or can also reach back and touch what is already sitting in the cluster.
+This module covers settings about *what* a policy's rules actually do once they run, and two things that trip up almost everyone the first time they meet them: whether a policy's rules all run together or stop at the first match, and whether Kyverno's `generate` and `mutate` rules only ever look forward at new resources, or can also reach back and touch what is already sitting in the cluster.
 
 ```mermaid
 flowchart TD
@@ -30,7 +30,7 @@ After this module you can:
 
 ## Before you start
 
-Module 1 is not required, but you should be comfortable with `match`/`exclude` (Section 020) and with the three rule types (Section 010). The playground and the linked lab give you a kind cluster with Kyverno v1.13.2 installed and namespaces that exist *before* any policy does.
+You should be comfortable with `match`/`exclude` and with the three rule types (validate, mutate and generate). The playground and the linked lab give you a kind cluster with Kyverno v1.13.2 installed and namespaces that exist *before* any policy does.
 
 Launch the playground now and keep it running next to you while you read. It has the namespaces `team-a`, `team-b`, `team-c`, a Deployment `web` in two of them, and no policies.
 

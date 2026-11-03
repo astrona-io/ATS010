@@ -2,7 +2,7 @@
 
 Kind, name, and namespace all describe *what* a resource is. This module covers the other axes of selection Kyverno gives you: the resource's **own labels** (`selector`), *what kind of write* is happening to it (`operations`), and *who* is doing the writing (`subjects`, `roles`, `clusterRoles`). It also formalizes the `any`/`all` boolean structure you've been quietly using throughout this section, since combining these axes correctly depends on understanding whether Kyverno treats a set of conditions as OR or AND.
 
-If Module 1 was the address on the envelope, this module is the rest of the delivery slip: what the envelope says on its own face (`selector`), whether it is a new letter or an amendment (`operations`), and who handed it in at the counter (`subjects`, `roles`, `clusterRoles`).
+This module covers three more selection fields. `selector` matches the labels on the resource itself. `operations` limits a rule to the request type (`CREATE`, `UPDATE`, `DELETE` or `CONNECT`). `subjects`, `roles` and `clusterRoles` match the identity of the caller that sent the request.
 
 ```mermaid
 flowchart TD
@@ -34,7 +34,7 @@ After this module you can:
 
 ## Before you start
 
-This module builds directly on Module 1's `kinds`/`names`/`namespaces`/`namespaceSelector`. Your playground is a kind cluster with Kyverno v1.13.2 and kubectl configured. It has an `apps-ns` namespace with two running Pods (`web-frontend` labeled `tier=frontend`, `web-backend` labeled `tier=backend`) and three ServiceAccounts to impersonate with `kubectl --as=`: `ci-deployer` (may create Pods), `auditor` (bound to the built-in `view` ClusterRole) and `ops-admin` (bound to the built-in `admin` ClusterRole). No policy exists yet.
+You should know the `kinds`, `names`, `namespaces` and `namespaceSelector` fields of `match`. Your playground is a kind cluster with Kyverno v1.13.2 and kubectl configured. It has an `apps-ns` namespace with two running Pods (`web-frontend` labeled `tier=frontend`, `web-backend` labeled `tier=backend`) and three ServiceAccounts to impersonate with `kubectl --as=`: `ci-deployer` (may create Pods), `auditor` (bound to the built-in `view` ClusterRole) and `ops-admin` (bound to the built-in `admin` ClusterRole). No policy exists yet.
 
 Launch your playground now, and keep it running next to you while you read the parts:
 

@@ -108,7 +108,7 @@ modules:
         difficulty: advanced
         estimated_duration: 30m
         topic: policy-application
-        task_kind: integrate
+        task_kind: build
         tags: [kyverno, enforce, audit, background-scan, policyexception, autogen]
         learning_goals:
           - Enforce a rule in one namespace and audit it in another from two separate policies
@@ -216,7 +216,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: policy-scope
-        task_kind: integration
+        task_kind: build
         tags: [kyverno, match, exclude, names, namespaceSelector, selector, operations, subjects, capstone]
         learning_goals:
           - Combine name, namespace label, resource label and operation filters in one match block
@@ -496,7 +496,7 @@ modules:
         difficulty: beginner
         estimated_duration: 20m
         topic: policy-reports
-        task_kind: investigation
+        task_kind: troubleshooting
         tags: [kyverno, policyreport, clusterpolicyreport, wgpolicyk8s, jq, audit]
         learning_goals:
           - Tell PolicyReport from ClusterPolicyReport and find the right one for a resource

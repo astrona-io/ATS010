@@ -19,7 +19,7 @@ Each module has `course.md` (landing page, ends with `<!-- astrona:playground --
 
 ## Manifest tags
 
-Lab entries in `astrona.yaml` carry `difficulty`, `estimated_duration`, `topic`, `task_kind` (build, fix, audit), `tags` and `learning_goals`.
+Lab entries in `astrona.yaml` carry `difficulty`, `estimated_duration`, `topic`, `task_kind` (`build`, `troubleshooting` or `migration`), `tags` and `learning_goals`.
 
 ## Rules
 
